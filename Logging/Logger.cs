@@ -16,15 +16,15 @@
             this.logfilepath = path;
         }
 
-        public void log(string message)
+        public void log(string message, params object[] ?replace)
         {
             switch (this.logType)
             {
                 case LogType.Console:
-                    Console.WriteLine(message);
+                    Console.WriteLine(string.Format(message, replace));
                     break;
                 case LogType.Logfile:
-                    File.WriteAllText(this.logfilepath, message);
+                    File.WriteAllText(this.logfilepath, string.Format(message, replace));
                     break;
             }
         }
