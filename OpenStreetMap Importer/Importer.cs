@@ -42,9 +42,13 @@ namespace OpenStreetMap_Importer
                 }
                 else if (reader.Name == "tag" && wayTag)
                 {
-                    string? value = reader.GetAttribute("v");
-                    string? key = reader.GetAttribute("k");
+#pragma warning disable CS8600 //tags will always have a value and key
+#pragma warning disable CS8604
+                    string value = reader.GetAttribute("v");
+                    string key = reader.GetAttribute("k");
                     logger.Log(loglevel.VERBOSE, "TAG {0} {1}", key, value);
+#pragma warning restore CS8600
+#pragma warning restore CS8604
                     switch (key)
                     {
                         case "highway":
@@ -98,8 +102,10 @@ namespace OpenStreetMap_Importer
                     ulong id = Convert.ToUInt64(reader.GetAttribute("id"));
                     if (nodes.ContainsKey(id))
                     {
+#pragma warning disable CS8602 //node will always have a lat and lon
                         float lat = Convert.ToSingle(reader.GetAttribute("lat").Replace('.', ','));
                         float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
+#pragma warning restore CS8602
                         nodes[id] = new Node(lat, lon);
                         logger.Log(loglevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
                     }
