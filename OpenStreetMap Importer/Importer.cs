@@ -6,162 +6,176 @@ namespace OpenStreetMap_Importer
 {
     public class Importer
     {
-        public static Dictionary<UInt64, Node> Import(Logger logger)
-        {
-            XmlReader reader = XmlReader.Create(new MemoryStream(OSM_Data.map));
-            reader.MoveToContent();
-            Dictionary<UInt64, Node> nodes = new Dictionary<UInt64, Node>();
 
-            nodeType currentNodeType = nodeType.NULL;
-            Node nullNode = new Node();
-            Node currentNode = nullNode;
+        public static Dictionary<ulong, Node> Import(ref Logger logger)
+        {
+            List<Way> ways = new List<Way>();
+            Dictionary<ulong, Node> nodes = new Dictionary<ulong, Node>();
+
+            bool wayTag = false;
             Way currentWay = new Way();
 
+            /*
+             * First iteration
+             * Import "ways" with a tag "highway" and add the node-ids to the list of nodes
+             */
+            XmlReaderSettings readerSettings = new XmlReaderSettings()
+            {
+                IgnoreWhitespace = true,
+                IgnoreComments = true
+            };
+            XmlReader reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
+            reader.MoveToContent();
             while (reader.Read())
             {
-                if (reader.Name == "node" && reader.IsStartElement())
+                if (reader.Name == "way" && reader.IsStartElement())
                 {
-                    currentNodeType = nodeType.NODE;
-                    nodes.Add(
-                        Convert.ToUInt64(reader.GetAttribute("id")),
-                        new Node(
-                            Convert.ToSingle(reader.GetAttribute("lat")),
-                            Convert.ToSingle(reader.GetAttribute("lon"))
-                            )
-                        );
-                }
-                else if (reader.Name == "way")
-                {
-                    if(currentNodeType == nodeType.WAY)
+                    logger.log(loglevel.VERBOSE, "WAY {0} nodes {1}", currentWay.highway.ToString(), currentWay.nodeIds.Count);
+                    if (currentWay.highway != Way.highwayType.NONE)
                     {
-                        ImportWay(currentWay);
-                        logger.log(loglevel.INFO, "Way nodes: {0}", currentWay.nodes.Count);
+                        ways.Add(currentWay);
+                        foreach (ulong id in currentWay.nodeIds)
+                        nodes.Add(id, Node.nullnode);
                     }
-                    currentNodeType = nodeType.WAY;
-                    currentNode = nullNode;
+                    wayTag = true;
                     currentWay = new Way();
-                    reader.GetAttribute("id");
-                }else if (reader.Name == "nd" && currentNodeType == nodeType.WAY){
-                    UInt64 id = Convert.ToUInt64(reader.GetAttribute("ref"));
-                    if (!nodes.TryGetValue(id, out currentNode))
-                    {
-                        logger.log(loglevel.DEBUG, "Node with id {0} not imported.", id);
-                    }
-                    else
-                    {
-                        currentWay.nodes.Add(currentNode);
-                    }
-                }else if (reader.Name == "tag")
+                }
+                else if (reader.Name == "tag" && wayTag)
                 {
-                    if(currentNodeType == nodeType.WAY)
+                    string? value = reader.GetAttribute("v");
+                    string? key = reader.GetAttribute("k");
+                    logger.log(loglevel.VERBOSE, "TAG {0} {1}", key, value);
+                    switch (key)
                     {
-                        string ?value = reader.GetAttribute("v");
-                        switch (reader.GetAttribute("k"))
-                        {
-                            /*case "highway":
-
-                                break;*/
-                            case "oneway":
-                                switch (value)
-                                {
-                                    case "yes":
-                                        currentWay.oneway = true;
-                                        break;
-                                    /*case "no":
-                                        currentWay.oneway = false;
-                                        break;*/
-                                    case "-1":
-                                        currentWay.oneway = true;
-                                        currentWay.direction = Way.wayDirection.backward;
-                                        break;
-                                }
-                                break;
+                        case "highway":
+                            currentWay.setHighwayType(value);
+                            break;
+                        case "oneway":
+                            switch (value)
+                            {
+                                case "yes":
+                                    currentWay.oneway = true;
+                                    break;
+                               /*case "no":
+                                    currentWay.oneway = false;
+                                    break;*/
+                                case "-1":
+                                    currentWay.oneway = true;
+                                    currentWay.direction = Way.wayDirection.backward;
+                                    break;
+                            }
+                            break;
                             /*case "name":
+                            
+                            break;*/
+                        }
+                    }
+                else if(reader.Name == "node")
+                {
+                    wayTag = false;
+                }
+            }
 
-                                break;*/
+            logger.log(loglevel.DEBUG, "Ways: {0}", ways.Count);
+
+            reader.Close();
+            reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
+            reader.MoveToContent();
+
+            /*
+             * Second iteration
+             * Import nodes that are needed by the "ways"
+             */
+            while (reader.Read())
+            {
+                if (reader.Name == "node")
+                {
+                    ulong id = Convert.ToUInt64(reader.GetAttribute("id"));
+                    if (nodes.ContainsKey(id))
+                    {
+                        Console.Read();
+                        float lat = Convert.ToSingle(reader.GetAttribute("lat").Replace('.', ','));
+                        float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
+                        nodes[id] = new Node(lat, lon);
+                        logger.log(loglevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
+                    }
+                }
+            }
+
+            logger.log(loglevel.DEBUG, "Nodes: {0}", nodes.Count);
+
+            /*
+             * Add connections between nodes based on ways and calculate distance
+             */
+            ulong edges = 0;
+            foreach(Way way in ways)
+            {
+                if (way.direction == Way.wayDirection.forward)
+                {
+                    for (int index = 0; index < way.nodeIds.Count - 1; index++)
+                    {
+                        Node currentNode = nodes[way.nodeIds[index]];
+                        Node neighborNode = nodes[way.nodeIds[index + 1]];
+                        ushort weight = Convert.ToUInt16(Utils.DistanceBetweenNodes(currentNode, neighborNode));
+                        currentNode.edges.Add(new Edge(neighborNode, weight));
+                        logger.log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
+                        edges++;
+                        if (!way.oneway)
+                        {
+                            neighborNode.edges.Add(new Edge(currentNode, weight));
+                            edges++;
+                        }
+                    }
+                }
+                else
+                {
+                    for (int index = way.nodeIds.Count - 1; index > 1; index--)
+                    {
+                        Node currentNode = nodes[way.nodeIds[index]];
+                        Node neighborNode = nodes[way.nodeIds[index - 1]];
+                        ushort weight = Convert.ToUInt16(Utils.DistanceBetweenNodes(currentNode, neighborNode));
+                        currentNode.edges.Add(new Edge(neighborNode, weight));
+                        logger.log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
+                        edges++;
+                        if (!way.oneway)
+                        {
+                            neighborNode.edges.Add(new Edge(currentNode, weight));
+                            edges++;
                         }
                     }
                 }
             }
 
-            logger.log(loglevel.INFO, "Loaded. Nodes: {0}", nodes.Count);
+            logger.log(loglevel.DEBUG, "Edges: {0}", edges);
             return nodes;
         }
 
-        internal static void ImportWay(Way way)
-        {
-
-            if (way.direction == Way.wayDirection.forward)
-            {
-                for(int index = 0; index < way.nodes.Count - 1; index++)
-                {
-                    Node currentNode = way.nodes[index];
-                    Node neighborNode = way.nodes[index + 1];
-                    ushort weight = Convert.ToUInt16(DistanceBetweenNodes(currentNode, neighborNode));
-                    currentNode.edges.Add(new Edge(neighborNode, weight));
-                    if (!way.oneway)
-                        neighborNode.edges.Add(new Edge(currentNode, weight));
-                }
-            }
-            else
-            {
-                for (int index = way.nodes.Count-1; index > 1; index--)
-                {
-                    Node currentNode = way.nodes[index];
-                    Node neighborNode = way.nodes[index - 1];
-                    ushort weight = Convert.ToUInt16(DistanceBetweenNodes(currentNode, neighborNode));
-                    currentNode.edges.Add(new Edge(neighborNode, weight));
-                    if (!way.oneway)
-                        neighborNode.edges.Add(new Edge(currentNode, weight));
-                }
-            }
-        }
-
-
-        internal enum nodeType { NODE, WAY, NULL }
-
         internal struct Way
         {
-            public List<Node> nodes;
+            public List<ulong> nodeIds;
             public bool oneway;
             public wayDirection direction;
+            public highwayType highway;
             public enum wayDirection { forward, backward }
+            public enum highwayType { NONE, motorway, trunk, primary, secondary, tertiary, unclassified, residential, motorway_link, trunk_link, primary_link, secondary_link, tertiary_link, living_street, service, pedestrian, track, bus_guideway, escape, raceway, road, busway, footway, bridleway, steps, corridor, path, cycleway, construction}
             public Way()
             {
-                this.nodes = new List<Node>();
+                this.nodeIds = new List<ulong>();
                 this.oneway = false;
                 this.direction = wayDirection.forward;
+                this.highway = highwayType.NONE;
             }
-        }
 
-        private static double DistanceBetweenNodes(Node n1, Node n2)
-        {
-            return DistanceBetweenCoordinates(n1.lat, n1.lon, n2.lat, n2.lon);
-        }
-
-        private static double DistanceBetweenCoordinates(float lat1, float lon1, float lat2, float lon2)
-        {
-            const int earthRadius = 6371;
-            double differenceLat = DegreesToRadians(lat2 - lat1);
-            double differenceLon = DegreesToRadians(lon2 - lon1);
-
-            double lat1Rads = DegreesToRadians(lat1);
-            double lat2Rads = DegreesToRadians(lat2);
-
-            double a = Math.Sin(differenceLat / 2) * Math.Sin(differenceLat / 2) + Math.Sin(differenceLon / 2) * Math.Sin(differenceLon / 2) * Math.Cos(lat1Rads) * Math.Cos(lat2Rads);
-            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-            return earthRadius * c;
-        }
-
-        private static double DegreesToRadians(double deg)
-        {
-            return deg * Math.PI / 180.0;
-        }
-
-        private static double RadiansToDegrees(double rad)
-        {
-            return rad * 180.0 / Math.PI;
+            public void setHighwayType(string waytype)
+            {
+                try
+                {
+                    this.highway = (highwayType)Enum.Parse(typeof(highwayType), waytype, true);
+                }catch(Exception)
+                {
+                    this.highway = highwayType.NONE;
+                }
+            }
         }
     }
 }
