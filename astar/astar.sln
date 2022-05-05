@@ -5,9 +5,13 @@ VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "astar", "astar.csproj", "{4B7782F4-DE4B-424D-B46B-E7BC750D0838}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logging", "..\Logging\Logging.csproj", "{97F58928-BC5A-40C2-AA8A-83A795D85FAA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Logging", "..\Logging\Logging.csproj", "{97F58928-BC5A-40C2-AA8A-83A795D85FAA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Executable", "..\Executable\Executable.csproj", "{9B311732-9631-480D-97A3-54823CC27CC8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Executable", "..\Executable\Executable.csproj", "{9B311732-9631-480D-97A3-54823CC27CC8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenStreetMap Importer", "..\OpenStreetMap Importer\OpenStreetMap Importer.csproj", "{1E918E64-866F-4386-AA44-AF7120A9294F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graph", "..\Graph\Graph.csproj", "{41576467-1FC5-49CE-B5B3-832EEED353DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +31,14 @@ Global
 		{9B311732-9631-480D-97A3-54823CC27CC8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B311732-9631-480D-97A3-54823CC27CC8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B311732-9631-480D-97A3-54823CC27CC8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E918E64-866F-4386-AA44-AF7120A9294F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E918E64-866F-4386-AA44-AF7120A9294F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E918E64-866F-4386-AA44-AF7120A9294F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E918E64-866F-4386-AA44-AF7120A9294F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41576467-1FC5-49CE-B5B3-832EEED353DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41576467-1FC5-49CE-B5B3-832EEED353DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41576467-1FC5-49CE-B5B3-832EEED353DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41576467-1FC5-49CE-B5B3-832EEED353DE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

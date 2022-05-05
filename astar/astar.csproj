@@ -7,22 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Logging\Logging.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="osm-data.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>osm-data.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="osm-data.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>osm-data.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
+    <ProjectReference Include="..\OpenStreetMap Importer\OpenStreetMap Importer.csproj" />
   </ItemGroup>
 
 </Project>
