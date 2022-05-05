@@ -1,6 +1,5 @@
 ﻿using Logging;
 using Graph;
-using OpenStreetMap_Importer;
 
 namespace astar
 {
@@ -11,10 +10,9 @@ namespace astar
         /*
          * Loads the graph, chooses two nodes at random and calls a*
          */
-        public Astar()
+        public Astar(Dictionary<UInt64, Node> nodes, ref Logger logger)
         {
-            this.logger = new Logger(LogType.Console, loglevel.DEBUG);
-            Dictionary<UInt64, Node> nodes = Importer.Import(ref logger);
+            this.logger = logger;
             Random r = new Random();
             List<Node> path = new List<Node>();
             while(path.Count < 1)
