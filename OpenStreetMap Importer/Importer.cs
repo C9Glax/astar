@@ -35,7 +35,7 @@ namespace OpenStreetMap_Importer
                     if(currentNodeType == nodeType.WAY)
                     {
                         ImportWay(currentWay);
-                        logger.log(loglevel.INFO, "Way nodes: {0}", currentWay.nodes.Count);
+                        logger.log(loglevel.INFO, "Way nodes: {0} Weight: {1}", currentWay.nodes.Count);
                     }
                     currentNodeType = nodeType.WAY;
                     currentNode = nullNode;
@@ -95,18 +95,24 @@ namespace OpenStreetMap_Importer
             {
                 for(int index = 0; index < way.nodes.Count - 1; index++)
                 {
-                    way.nodes[index].edges.Add(new Edge(way.nodes[index + 1]));
+                    Node currentNode = way.nodes[index];
+                    Node neighborNode = way.nodes[index + 1];
+                    ushort weight = Convert.ToUInt16(DistanceBetweenNodes(currentNode, neighborNode));
+                    currentNode.edges.Add(new Edge(neighborNode, weight));
                     if (!way.oneway)
-                        way.nodes[index+1].edges.Add(new Edge(way.nodes[index]));
+                        neighborNode.edges.Add(new Edge(currentNode, weight));
                 }
             }
             else
             {
                 for (int index = way.nodes.Count-1; index > 1; index--)
                 {
-                    way.nodes[index].edges.Add(new Edge(way.nodes[index - 1]));
+                    Node currentNode = way.nodes[index];
+                    Node neighborNode = way.nodes[index - 1];
+                    ushort weight = Convert.ToUInt16(DistanceBetweenNodes(currentNode, neighborNode));
+                    currentNode.edges.Add(new Edge(neighborNode, weight));
                     if (!way.oneway)
-                        way.nodes[index - 1].edges.Add(new Edge(way.nodes[index]));
+                        neighborNode.edges.Add(new Edge(currentNode, weight));
                 }
             }
         }
@@ -126,6 +132,36 @@ namespace OpenStreetMap_Importer
                 this.oneway = false;
                 this.direction = wayDirection.forward;
             }
+        }
+
+        private static double DistanceBetweenNodes(Node n1, Node n2)
+        {
+            return DistanceBetweenCoordinates(n1.lat, n1.lon, n2.lat, n2.lon);
+        }
+
+        private static double DistanceBetweenCoordinates(float lat1, float lon1, float lat2, float lon2)
+        {
+            const int earthRadius = 6371;
+            double differenceLat = DegreesToRadians(lat2 - lat1);
+            double differenceLon = DegreesToRadians(lon2 - lon1);
+
+            double lat1Rads = DegreesToRadians(lat1);
+            double lat2Rads = DegreesToRadians(lat2);
+
+            double a = Math.Sin(differenceLat / 2) * Math.Sin(differenceLat / 2) + Math.Sin(differenceLon / 2) * Math.Sin(differenceLon / 2) * Math.Cos(lat1Rads) * Math.Cos(lat2Rads);
+            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+            return earthRadius * c;
+        }
+
+        private static double DegreesToRadians(double deg)
+        {
+            return deg * Math.PI / 180.0;
+        }
+
+        private static double RadiansToDegrees(double rad)
+        {
+            return rad * 180.0 / Math.PI;
         }
     }
 }
