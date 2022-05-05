@@ -7,6 +7,10 @@ namespace astar
     public class Astar
     {
         private Logger logger;
+
+        /*
+         * Loads the graph, chooses two nodes at random and calls a*
+         */
         public Astar()
         {
             this.logger = new Logger(LogType.Console, loglevel.DEBUG);
@@ -18,14 +22,17 @@ namespace astar
                 Node n1 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
                 Node n2 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
                 logger.Log(loglevel.INFO, "From {0} - {1} to {2} - {3}", n1.lat, n1.lon, n2.lat, n2.lon);
-                path = FindPath(n1, n2, ref this.logger);
+                path = FindPath(ref nodes, n1, n2, ref this.logger);
             }
 
             logger.Log(loglevel.INFO, "Path found");
             foreach (Node n in path)
-                logger.Log(loglevel.INFO, "{0} {1} Distance left {2}", n.lat, n.lon, n.goalDistance);
+                logger.Log(loglevel.INFO, "lat {0:000.00000} lon {1:000.00000} traveled {2:0000.00} / {3:0000.00} beeline {4:0000.00}", n.lat, n.lon, n.pathLength, path.ElementAt(path.Count-1).pathLength, n.goalDistance);
         }
 
+        /*
+         * Resets the calculated previous nodes and distance to goal
+         */
         private static void Reset(ref Dictionary<ulong, Node> nodes)
         {
             foreach(Node n in nodes.Values)
@@ -35,26 +42,35 @@ namespace astar
             }
         }
 
-        private static List<Node> FindPath(Node start, Node goal, ref Logger logger)
+        /*
+         * 
+         */
+        private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger logger)
         {
+            Reset(ref nodes);
             List<Node> toVisit = new List<Node>();
             toVisit.Add(start);
             Node currentNode = start;
+            start.pathLength = 0;
+            start.goalDistance = Utils.DistanceBetweenNodes(start, goal);
             while(currentNode != goal && toVisit.Count > 0)
             {
-                logger.Log(loglevel.VERBOSE, "toVisit-length: {0} distance: {1}", toVisit.Count, currentNode.goalDistance);
+                currentNode = toVisit.First();
+                logger.Log(loglevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
+                //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
-                    if(e.neighbor.previousNode == Node.nullnode)
-                    {
-                        toVisit.Add(e.neighbor);
+                    if (e.neighbor.goalDistance == double.MaxValue)
                         e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
+                    if (e.neighbor.pathLength > currentNode.pathLength + e.weight)
+                    {
+                        e.neighbor.pathLength = currentNode.pathLength + e.weight;
                         e.neighbor.previousNode = currentNode;
+                        toVisit.Add(e.neighbor);
                     }
                 }
-                toVisit.Remove(currentNode);
+                toVisit.Remove(currentNode); //"Mark" as visited
                 toVisit.Sort(CompareDistanceToGoal);
-                currentNode = toVisit.First();
             }
 
             List<Node> path = new List<Node>();
@@ -75,6 +91,9 @@ namespace astar
             return path;
         }
         
+        /*
+         * Compares two nodes and returns the node closer to the goal
+         */
         private static int CompareDistanceToGoal(Node n1, Node n2)
         {
             if (n1 == null || n2 == null)

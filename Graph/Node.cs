@@ -9,13 +9,16 @@
         public Node previousNode { get; set; }
         public double goalDistance { get; set; }
 
+        public double pathLength { get; set; }
+
         public Node(float lat, float lon)
         {
             this.lat = lat;
             this.lon = lon;
             this.edges = new List<Edge>();
             this.previousNode = nullnode;
-            this.goalDistance = uint.MaxValue;
+            this.goalDistance = double.MaxValue;
+            this.pathLength = double.MaxValue;
         }
         public static Node nullnode = new Node(float.NaN, float.NaN);
     }
