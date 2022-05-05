@@ -9,7 +9,8 @@ namespace astar
         public Astar()
         {
             this.logger = new Logger(LogType.Console, loglevel.DEBUG);
-            Importer.Import(logger);
+            Dictionary<UInt64, Node> nodes = Importer.Import(logger);
+
         }
     }
 }

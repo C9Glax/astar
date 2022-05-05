@@ -5,7 +5,7 @@ namespace astar
 {
     public class Importer
     {
-        public static void Import(Logger logger)
+        public static Dictionary<UInt64, Node> Import(Logger logger)
         {
             XmlReader reader = XmlReader.Create(new MemoryStream(osm_data.map));
             reader.MoveToContent();
@@ -84,6 +84,7 @@ namespace astar
             }
 
             logger.log(loglevel.INFO, "Loaded. Nodes: {0}", nodes.Count);
+            return nodes;
         }
 
         internal static void ImportWay(Way way)
