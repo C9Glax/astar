@@ -32,10 +32,10 @@ namespace OpenStreetMap_Importer
                 }
                 else if (reader.Name == "way")
                 {
-                    if(currentNodeType == nodeType.WAY)
+                    if(currentNodeType == nodeType.WAY && currentWay.nodes.Count > 1)
                     {
                         ImportWay(currentWay);
-                        logger.log(loglevel.INFO, "Way nodes: {0} Weight: {1}", currentWay.nodes.Count);
+                        logger.log(loglevel.INFO, "Way nodes: {0}", currentWay.nodes.Count);
                     }
                     currentNodeType = nodeType.WAY;
                     currentNode = nullNode;

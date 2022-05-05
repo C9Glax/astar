@@ -6,9 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Logging\Logging.csproj" />
-    <ProjectReference Include="..\OpenStreetMap Importer\OpenStreetMap Importer.csproj" />
-  </ItemGroup>
-
 </Project>
