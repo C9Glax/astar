@@ -34,7 +34,7 @@ namespace astar
                     if(currentNodeType == nodeType.WAY)
                     {
                         ImportWay(currentWay);
-                        logger.log("Way nodes: {0}", currentWay.nodes.Count);
+                        logger.log(loglevel.INFO, "Way nodes: {0}", currentWay.nodes.Count);
                     }
                     currentNodeType = nodeType.WAY;
                     currentNode = nullNode;
@@ -44,7 +44,7 @@ namespace astar
                     UInt64 id = Convert.ToUInt64(reader.GetAttribute("ref"));
                     if (!nodes.TryGetValue(id, out currentNode))
                     {
-                        logger.log("ERR: Node with id {0} not imported.", id);
+                        logger.log(loglevel.DEBUG, "Node with id {0} not imported.", id);
                     }
                     else
                     {
@@ -83,7 +83,7 @@ namespace astar
                 }
             }
 
-            logger.log("Loaded. Nodes: {0}", nodes.Count);
+            logger.log(loglevel.INFO, "Loaded. Nodes: {0}", nodes.Count);
         }
 
         internal static void ImportWay(Way way)
