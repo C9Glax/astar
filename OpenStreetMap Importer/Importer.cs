@@ -35,7 +35,7 @@ namespace OpenStreetMap_Importer
                     if(currentNodeType == nodeType.WAY)
                     {
                         ImportWay(currentWay);
-                        logger.log(loglevel.INFO, "Way nodes: {0} Weight: {1}", currentWay.nodes.Count);
+                        logger.log(loglevel.INFO, "Way nodes: {0}", currentWay.nodes.Count);
                     }
                     currentNodeType = nodeType.WAY;
                     currentNode = nullNode;

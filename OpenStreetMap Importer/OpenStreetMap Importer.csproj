@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Graph\Graph.csproj" />
+    <ProjectReference Include="..\Logging\Logging.csproj" />
   </ItemGroup>
 
   <ItemGroup>
