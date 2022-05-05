@@ -42,5 +42,5 @@
     }
 
     public enum LogType { Console, Logfile }
-    public enum loglevel : ushort { DEBUG = 0, INFO = 1, ERROR = 2 };
+    public enum loglevel : ushort { DEBUG = 0, INFO = 1, ERROR = 2, VERBOSE = 3 };
 }
