@@ -27,10 +27,14 @@
                 switch (this.logType)
                 {
                     case LogType.Console:
+#pragma warning disable CS8604
                         Console.WriteLine(string.Format(header + message, replace));
+#pragma warning restore CS8604
                         break;
                     case LogType.Logfile:
+#pragma warning disable CS8604
                         File.WriteAllText(this.logfilepath, string.Format(header + message, replace));
+#pragma warning restore CS8604
                         break;
                 }
             }
