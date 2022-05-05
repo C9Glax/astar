@@ -19,9 +19,9 @@
             this.level = level;
         }
 
-        public void log(loglevel type, string message, params object[] ?replace)
+        public void Log(loglevel type, string message, params object[] ?replace)
         {
-            if(type >= this.level)
+            if(type <= this.level)
             {
                 string header = string.Format("{0} {1} {2}: ", DateTime.Now.ToLocalTime().ToShortDateString(), DateTime.Now.ToLocalTime().ToLongTimeString(), type.ToString());
                 switch (this.logType)
@@ -42,5 +42,5 @@
     }
 
     public enum LogType { Console, Logfile }
-    public enum loglevel : ushort { DEBUG = 0, INFO = 1, ERROR = 2, VERBOSE = 3 };
+    public enum loglevel : ushort { INFO = 0, DEBUG = 1, ERROR = 2, VERBOSE = 3 };
 }
