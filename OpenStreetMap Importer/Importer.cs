@@ -55,7 +55,7 @@ namespace OpenStreetMap_Importer
                 {
                     if(currentNodeType == nodeType.WAY)
                     {
-                        string value = reader.GetAttribute("v");
+                        string ?value = reader.GetAttribute("v");
                         switch (reader.GetAttribute("k"))
                         {
                             /*case "highway":
