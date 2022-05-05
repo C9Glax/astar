@@ -149,6 +149,7 @@ namespace OpenStreetMap_Importer
                     }
                 }
             }
+            reader.Close();
 
             logger.Log(loglevel.DEBUG, "Edges: {0}", edges);
             return nodes;
