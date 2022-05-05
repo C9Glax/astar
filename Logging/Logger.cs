@@ -23,7 +23,7 @@
         {
             if(type <= this.level)
             {
-                string header = string.Format("{0} {1} {2}: ", DateTime.Now.ToLocalTime().ToShortDateString(), DateTime.Now.ToLocalTime().ToLongTimeString(), type.ToString());
+                string header = string.Format("{0} {1} {2}: ", DateTime.Now.ToLocalTime().ToShortDateString(), DateTime.Now.ToLocalTime().ToLongTimeString(), type.ToString()[0]);
                 switch (this.logType)
                 {
                     case LogType.Console:
