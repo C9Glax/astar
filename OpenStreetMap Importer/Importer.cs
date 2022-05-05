@@ -30,12 +30,12 @@ namespace OpenStreetMap_Importer
             {
                 if (reader.Name == "way" && reader.IsStartElement())
                 {
-                    logger.log(loglevel.VERBOSE, "WAY {0} nodes {1}", currentWay.highway.ToString(), currentWay.nodeIds.Count);
+                    logger.Log(loglevel.VERBOSE, "WAY {0} nodes {1}", currentWay.highway.ToString(), currentWay.nodeIds.Count);
                     if (currentWay.highway != Way.highwayType.NONE)
                     {
                         ways.Add(currentWay);
                         foreach (ulong id in currentWay.nodeIds)
-                        nodes.Add(id, Node.nullnode);
+                        nodes.TryAdd(id, Node.nullnode);
                     }
                     wayTag = true;
                     currentWay = new Way();
@@ -44,11 +44,11 @@ namespace OpenStreetMap_Importer
                 {
                     string? value = reader.GetAttribute("v");
                     string? key = reader.GetAttribute("k");
-                    logger.log(loglevel.VERBOSE, "TAG {0} {1}", key, value);
+                    logger.Log(loglevel.VERBOSE, "TAG {0} {1}", key, value);
                     switch (key)
                     {
                         case "highway":
-                            currentWay.setHighwayType(value);
+                            currentWay.SetHighwayType(value);
                             break;
                         case "oneway":
                             switch (value)
@@ -68,15 +68,20 @@ namespace OpenStreetMap_Importer
                             /*case "name":
                             
                             break;*/
-                        }
                     }
+                }
+                else if(reader.Name == "nd" && wayTag)
+                {
+                    ulong id = Convert.ToUInt64(reader.GetAttribute("ref"));
+                    currentWay.nodeIds.Add(id);
+                }
                 else if(reader.Name == "node")
                 {
                     wayTag = false;
                 }
             }
 
-            logger.log(loglevel.DEBUG, "Ways: {0}", ways.Count);
+            logger.Log(loglevel.DEBUG, "Ways: {0} Nodes: {1}", ways.Count, nodes.Count);
 
             reader.Close();
             reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
@@ -93,16 +98,15 @@ namespace OpenStreetMap_Importer
                     ulong id = Convert.ToUInt64(reader.GetAttribute("id"));
                     if (nodes.ContainsKey(id))
                     {
-                        Console.Read();
                         float lat = Convert.ToSingle(reader.GetAttribute("lat").Replace('.', ','));
                         float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
                         nodes[id] = new Node(lat, lon);
-                        logger.log(loglevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
+                        logger.Log(loglevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
                     }
                 }
             }
 
-            logger.log(loglevel.DEBUG, "Nodes: {0}", nodes.Count);
+            logger.Log(loglevel.INFO, "Import finished. Calculating distances.");
 
             /*
              * Add connections between nodes based on ways and calculate distance
@@ -116,9 +120,9 @@ namespace OpenStreetMap_Importer
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
                         Node neighborNode = nodes[way.nodeIds[index + 1]];
-                        ushort weight = Convert.ToUInt16(Utils.DistanceBetweenNodes(currentNode, neighborNode));
+                        double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode);
                         currentNode.edges.Add(new Edge(neighborNode, weight));
-                        logger.log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
+                        logger.Log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
                         edges++;
                         if (!way.oneway)
                         {
@@ -133,9 +137,9 @@ namespace OpenStreetMap_Importer
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
                         Node neighborNode = nodes[way.nodeIds[index - 1]];
-                        ushort weight = Convert.ToUInt16(Utils.DistanceBetweenNodes(currentNode, neighborNode));
+                        double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode);
                         currentNode.edges.Add(new Edge(neighborNode, weight));
-                        logger.log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
+                        logger.Log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
                         edges++;
                         if (!way.oneway)
                         {
@@ -146,7 +150,7 @@ namespace OpenStreetMap_Importer
                 }
             }
 
-            logger.log(loglevel.DEBUG, "Edges: {0}", edges);
+            logger.Log(loglevel.DEBUG, "Edges: {0}", edges);
             return nodes;
         }
 
@@ -166,7 +170,7 @@ namespace OpenStreetMap_Importer
                 this.highway = highwayType.NONE;
             }
 
-            public void setHighwayType(string waytype)
+            public void SetHighwayType(string waytype)
             {
                 try
                 {
