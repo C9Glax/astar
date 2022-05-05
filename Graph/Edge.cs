@@ -3,8 +3,8 @@
     public struct Edge
     {
         public Node neighbor { get; }
-        public ushort weight { get; }
-        public Edge(Node neighbor, ushort weight)
+        public double weight { get; }
+        public Edge(Node neighbor, double weight)
         {
             this.neighbor = neighbor;
             this.weight = weight;
