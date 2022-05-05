@@ -5,27 +5,25 @@ namespace astar
 {
     public class Astar
     {
-        private Logger logger;
 
         /*
          * Loads the graph, chooses two nodes at random and calls a*
          */
-        public Astar(Dictionary<UInt64, Node> nodes, ref Logger logger)
+        public Astar(Dictionary<UInt64, Node> nodes, Logger ?logger = null)
         {
-            this.logger = logger;
             Random r = new Random();
             List<Node> path = new List<Node>();
             while(path.Count < 1)
             {
                 Node n1 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
                 Node n2 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
-                logger.Log(loglevel.INFO, "From {0} - {1} to {2} - {3}", n1.lat, n1.lon, n2.lat, n2.lon);
-                path = FindPath(ref nodes, n1, n2, ref this.logger);
+                logger?.Log(loglevel.INFO, "From {0} - {1} to {2} - {3}", n1.lat, n1.lon, n2.lat, n2.lon);
+                path = FindPath(ref nodes, n1, n2, ref logger);
             }
 
-            logger.Log(loglevel.INFO, "Path found");
+            logger?.Log(loglevel.INFO, "Path found");
             foreach (Node n in path)
-                logger.Log(loglevel.INFO, "lat {0:000.00000} lon {1:000.00000} traveled {2:0000.00} / {3:0000.00} beeline {4:0000.00}", n.lat, n.lon, n.pathLength, path.ElementAt(path.Count-1).pathLength, n.goalDistance);
+                logger?.Log(loglevel.INFO, "lat {0:000.00000} lon {1:000.00000} traveled {2:0000.00} / {3:0000.00} beeline {4:0000.00}", n.lat, n.lon, n.pathLength, path.ElementAt(path.Count-1).pathLength, n.goalDistance);
         }
 
         /*
@@ -43,7 +41,7 @@ namespace astar
         /*
          * 
          */
-        private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger logger)
+        private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger ?logger)
         {
             Reset(ref nodes);
             List<Node> toVisit = new List<Node>();
@@ -54,7 +52,7 @@ namespace astar
             while(currentNode != goal && toVisit.Count > 0)
             {
                 currentNode = toVisit.First();
-                logger.Log(loglevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
+                logger?.Log(loglevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
@@ -75,7 +73,7 @@ namespace astar
 
             if (currentNode != goal)
             {
-                logger.Log(loglevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
+                logger?.Log(loglevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
                 return path;
             }
 

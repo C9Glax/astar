@@ -7,7 +7,7 @@ namespace OpenStreetMap_Importer
     public class Importer
     {
 
-        public static Dictionary<ulong, Node> Import(ref Logger logger)
+        public static Dictionary<ulong, Node> Import(Logger ?logger = null)
         {
             List<Way> ways = new List<Way>();
             Dictionary<ulong, Node> nodes = new Dictionary<ulong, Node>();
@@ -30,7 +30,7 @@ namespace OpenStreetMap_Importer
             {
                 if (reader.Name == "way" && reader.IsStartElement())
                 {
-                    logger.Log(loglevel.VERBOSE, "WAY {0} nodes {1}", currentWay.highway.ToString(), currentWay.nodeIds.Count);
+                    logger?.Log(loglevel.VERBOSE, "WAY {0} nodes {1}", currentWay.highway.ToString(), currentWay.nodeIds.Count);
                     if (currentWay.highway != Way.highwayType.NONE)
                     {
                         ways.Add(currentWay);
@@ -46,9 +46,8 @@ namespace OpenStreetMap_Importer
 #pragma warning disable CS8604
                     string value = reader.GetAttribute("v");
                     string key = reader.GetAttribute("k");
-                    logger.Log(loglevel.VERBOSE, "TAG {0} {1}", key, value);
+                    logger?.Log(loglevel.VERBOSE, "TAG {0} {1}", key, value);
 #pragma warning restore CS8600
-#pragma warning restore CS8604
                     switch (key)
                     {
                         case "highway":
@@ -73,6 +72,7 @@ namespace OpenStreetMap_Importer
                             
                             break;*/
                     }
+#pragma warning restore CS8604
                 }
                 else if(reader.Name == "nd" && wayTag)
                 {
@@ -85,7 +85,7 @@ namespace OpenStreetMap_Importer
                 }
             }
 
-            logger.Log(loglevel.DEBUG, "Ways: {0} Nodes: {1}", ways.Count, nodes.Count);
+            logger?.Log(loglevel.DEBUG, "Ways: {0} Nodes: {1}", ways.Count, nodes.Count);
 
             reader.Close();
             reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
@@ -107,12 +107,12 @@ namespace OpenStreetMap_Importer
                         float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
 #pragma warning restore CS8602
                         nodes[id] = new Node(lat, lon);
-                        logger.Log(loglevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
+                        logger?.Log(loglevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
                     }
                 }
             }
 
-            logger.Log(loglevel.INFO, "Import finished. Calculating distances.");
+            logger?.Log(loglevel.INFO, "Import finished. Calculating distances.");
 
             /*
              * Add connections between nodes based on ways and calculate distance
@@ -128,7 +128,7 @@ namespace OpenStreetMap_Importer
                         Node neighborNode = nodes[way.nodeIds[index + 1]];
                         double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode);
                         currentNode.edges.Add(new Edge(neighborNode, weight));
-                        logger.Log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
+                        logger?.Log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
                         edges++;
                         if (!way.oneway)
                         {
@@ -145,7 +145,7 @@ namespace OpenStreetMap_Importer
                         Node neighborNode = nodes[way.nodeIds[index - 1]];
                         double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode);
                         currentNode.edges.Add(new Edge(neighborNode, weight));
-                        logger.Log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
+                        logger?.Log(loglevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
                         edges++;
                         if (!way.oneway)
                         {
@@ -157,7 +157,7 @@ namespace OpenStreetMap_Importer
             }
             reader.Close();
 
-            logger.Log(loglevel.DEBUG, "Edges: {0}", edges);
+            logger?.Log(loglevel.DEBUG, "Edges: {0}", edges);
             return nodes;
         }
 
