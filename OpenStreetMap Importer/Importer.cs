@@ -83,6 +83,7 @@ namespace OpenStreetMap_Importer
                 {
                     ulong id = Convert.ToUInt64(reader.GetAttribute("ref"));
                     currentWay.nodeIds.Add(id);
+                    logger?.Log(LogLevel.VERBOSE, "nd: {0}", id);
                 }
                 else if(reader.Name == "node")
                 {
@@ -112,7 +113,7 @@ namespace OpenStreetMap_Importer
                         float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
 #pragma warning restore CS8602
                         nodes.TryAdd(id, new Node(lat, lon));
-                        logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
+                        logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, count[id]);
                     }
                 }
             }
@@ -154,7 +155,6 @@ namespace OpenStreetMap_Importer
                         {
                             Node nextNode = nodes[way.nodeIds[index + 1]];
                             weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                            nodes.Remove(way.nodeIds[index + 1]);
                         }
                         edges++;
                     }
@@ -195,7 +195,6 @@ namespace OpenStreetMap_Importer
                         {
                             Node nextNode = nodes[way.nodeIds[index - 1]];
                             weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                            nodes.Remove(way.nodeIds[index - 1]);
                         }
                         edges++;
                     }
@@ -214,8 +213,10 @@ namespace OpenStreetMap_Importer
             }
             reader.Close();
 
+            
+
             logger?.Log(LogLevel.DEBUG, "Edges: {0}", edges);
-            return nodes;
+            return nodes.Where(node => count[node.Key] > 1).ToDictionary(node => node.Key, node => node.Value);
         }
 
         internal struct Way
