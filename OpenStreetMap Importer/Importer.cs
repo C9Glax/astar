@@ -14,10 +14,12 @@ namespace OpenStreetMap_Importer
 
             bool wayTag = false;
             Way currentWay = new();
+            Dictionary<ulong, ushort> count = new();
 
             /*
              * First iteration
-             * Import "ways" with a tag "highway" and add the node-ids to the list of nodes
+             * Import "ways" with a tag "highway"
+             * Count occurances of "nodes" to find junctions
              */
             XmlReaderSettings readerSettings = new()
             {
@@ -35,7 +37,10 @@ namespace OpenStreetMap_Importer
                     {
                         ways.Add(currentWay);
                         foreach (ulong id in currentWay.nodeIds)
-                        nodes.TryAdd(id, Node.nullnode);
+                            if(count.ContainsKey(id))
+                                count[id]++;
+                            else
+                                count.TryAdd(id, 1);
                     }
                     wayTag = true;
                     currentWay = new Way();
@@ -100,13 +105,13 @@ namespace OpenStreetMap_Importer
                 if (reader.Name == "node")
                 {
                     ulong id = Convert.ToUInt64(reader.GetAttribute("id"));
-                    if (nodes.ContainsKey(id))
+                    if (count.ContainsKey(id))
                     {
 #pragma warning disable CS8602 //node will always have a lat and lon
                         float lat = Convert.ToSingle(reader.GetAttribute("lat").Replace('.', ','));
                         float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
 #pragma warning restore CS8602
-                        nodes[id] = new Node(lat, lon);
+                        nodes.TryAdd(id, new Node(lat, lon));
                         logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2}", id, lat, lon);
                     }
                 }
@@ -115,43 +120,95 @@ namespace OpenStreetMap_Importer
             logger?.Log(LogLevel.INFO, "Import finished. Calculating distances.");
 
             /*
-             * Add connections between nodes based on ways and calculate distance
+             * Add connections between nodes (only junctions, e.g. nodes are referenced more than once)
+             * Remove non-junction nodes
              */
             ulong edges = 0;
             foreach(Way way in ways)
             {
+                Node junction1 = nodes[way.nodeIds[0]];
+                Node junction2;
+                double weight = 0;
                 if (way.direction == Way.wayDirection.forward)
                 {
-                    for (int index = 0; index < way.nodeIds.Count - 1; index++)
+                    for (int index = 1; index < way.nodeIds.Count - 1; index++)
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
-                        Node neighborNode = nodes[way.nodeIds[index + 1]];
-                        double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode);
-                        currentNode.edges.Add(new Edge(neighborNode, weight));
-                        logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
-                        edges++;
-                        if (!way.oneway)
+                        if (count[way.nodeIds[index]] > 1)
                         {
-                            neighborNode.edges.Add(new Edge(currentNode, weight));
-                            edges++;
+                            junction2 = nodes[way.nodeIds[index]];
+                            junction1.edges.Add(new Edge(junction2, weight));
+                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
+
+                            if (!way.oneway)
+                            {
+                                junction2.edges.Add(new Edge(junction1, weight));
+                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
+                                edges++;
+                            }
+
+                            junction1 = junction2;
+                            weight = 0;
                         }
+                        else
+                        {
+                            Node nextNode = nodes[way.nodeIds[index + 1]];
+                            weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
+                            nodes.Remove(way.nodeIds[index + 1]);
+                        }
+                        edges++;
+                    }
+
+                    junction2 = nodes[way.nodeIds[way.nodeIds.Count - 1]];
+                    junction1.edges.Add(new Edge(junction2, weight));
+                    logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
+
+                    if (!way.oneway)
+                    {
+                        junction2.edges.Add(new Edge(junction1, weight));
+                        logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
+                        edges++;
                     }
                 }
                 else
                 {
-                    for (int index = way.nodeIds.Count - 1; index > 1; index--)
+                    for (int index = way.nodeIds.Count - 2; index > 1; index--)
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
-                        Node neighborNode = nodes[way.nodeIds[index - 1]];
-                        double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode) / ((uint)way.highway);
-                        currentNode.edges.Add(new Edge(neighborNode, weight));
-                        logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
-                        edges++;
-                        if (!way.oneway)
+                        if (count[way.nodeIds[index]] > 1)
                         {
-                            neighborNode.edges.Add(new Edge(currentNode, weight));
-                            edges++;
+                            junction2 = nodes[way.nodeIds[index]];
+                            junction1.edges.Add(new Edge(junction2, weight));
+                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
+
+                            if (!way.oneway)
+                            {
+                                junction2.edges.Add(new Edge(junction1, weight));
+                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
+                                edges++;
+                            }
+
+                            junction1 = junction2;
+                            weight = 0;
                         }
+                        else
+                        {
+                            Node nextNode = nodes[way.nodeIds[index - 1]];
+                            weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
+                            nodes.Remove(way.nodeIds[index - 1]);
+                        }
+                        edges++;
+                    }
+
+                    junction2 = nodes[way.nodeIds[way.nodeIds.Count - 1]];
+                    junction1.edges.Add(new Edge(junction2, weight));
+                    logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
+
+                    if (!way.oneway)
+                    {
+                        junction2.edges.Add(new Edge(junction1, weight));
+                        logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
+                        edges++;
                     }
                 }
             }
