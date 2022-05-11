@@ -17,13 +17,13 @@ namespace astar
             {
                 Node n1 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
                 Node n2 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
-                logger?.Log(loglevel.INFO, "From {0} - {1} to {2} - {3}", n1.lat, n1.lon, n2.lat, n2.lon);
+                logger?.Log(LogLevel.INFO, "From {0} - {1} to {2} - {3}", n1.lat, n1.lon, n2.lat, n2.lon);
                 path = FindPath(ref nodes, n1, n2, ref logger);
             }
 
-            logger?.Log(loglevel.INFO, "Path found");
+            logger?.Log(LogLevel.INFO, "Path found");
             foreach (Node n in path)
-                logger?.Log(loglevel.INFO, "lat {0:000.00000} lon {1:000.00000} traveled {2:0000.00} / {3:0000.00} beeline {4:0000.00}", n.lat, n.lon, n.pathLength, path.ElementAt(path.Count-1).pathLength, n.goalDistance);
+                logger?.Log(LogLevel.INFO, "lat {0:000.00000} lon {1:000.00000} traveled {2:0000.00} / {3:0000.00} beeline {4:0000.00}", n.lat, n.lon, n.pathLength, path.ElementAt(path.Count-1).pathLength, n.goalDistance);
         }
 
         /*
@@ -52,7 +52,7 @@ namespace astar
             while(currentNode != goal && toVisit.Count > 0)
             {
                 currentNode = toVisit.First();
-                logger?.Log(loglevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
+                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
@@ -73,7 +73,7 @@ namespace astar
 
             if (currentNode != goal)
             {
-                logger?.Log(loglevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
+                logger?.Log(LogLevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
                 return path;
             }
 
