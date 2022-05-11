@@ -20,6 +20,6 @@
             this.goalDistance = double.MaxValue;
             this.pathLength = double.MaxValue;
         }
-        public static Node nullnode = new Node(float.NaN, float.NaN);
+        public static Node nullnode = new(float.NaN, float.NaN);
     }
 }

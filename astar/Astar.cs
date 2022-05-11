@@ -11,8 +11,8 @@ namespace astar
          */
         public Astar(Dictionary<UInt64, Node> nodes, Logger ?logger = null)
         {
-            Random r = new Random();
-            List<Node> path = new List<Node>();
+            Random r = new();
+            List<Node> path = new();
             while(path.Count < 1)
             {
                 Node n1 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
@@ -44,7 +44,7 @@ namespace astar
         private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger ?logger)
         {
             Reset(ref nodes);
-            List<Node> toVisit = new List<Node>();
+            List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
             start.pathLength = 0;
@@ -69,7 +69,7 @@ namespace astar
                 toVisit.Sort(CompareDistanceToGoal);
             }
 
-            List<Node> path = new List<Node>();
+            List<Node> path = new();
 
             if (currentNode != goal)
             {
