@@ -9,17 +9,17 @@ namespace OpenStreetMap_Importer
 
         public static Dictionary<ulong, Node> Import(Logger ?logger = null)
         {
-            List<Way> ways = new List<Way>();
-            Dictionary<ulong, Node> nodes = new Dictionary<ulong, Node>();
+            List<Way> ways = new();
+            Dictionary<ulong, Node> nodes = new();
 
             bool wayTag = false;
-            Way currentWay = new Way();
+            Way currentWay = new();
 
             /*
              * First iteration
              * Import "ways" with a tag "highway" and add the node-ids to the list of nodes
              */
-            XmlReaderSettings readerSettings = new XmlReaderSettings()
+            XmlReaderSettings readerSettings = new()
             {
                 IgnoreWhitespace = true,
                 IgnoreComments = true
@@ -172,33 +172,33 @@ namespace OpenStreetMap_Importer
             {
                 NONE = 1,
                 motorway = 130,
-                trunk = 130,
-                primary = 100,
+                trunk = 125,
+                primary = 110,
                 secondary = 100,
                 tertiary = 80,
-                unclassified = 50,
-                residential = 30,
-                motorway_link = 50,
+                unclassified = 40,
+                residential = 23,
+                motorway_link = 55,
                 trunk_link = 50,
                 primary_link = 30,
-                secondary_link = 30,
-                tertiary_link = 20,
-                living_street = 5,
-                service = 1,
-                pedestrian = 1,
-                track = 5,
-                bus_guideway = 1,
-                escape = 1,
-                raceway = 1,
-                road = 30,
-                busway = 1,
-                footway = 1,
-                bridleway = 1,
-                steps = 1,
-                corridor = 1,
-                path = 1,
-                cycleway = 1,
-                construction = 1
+                secondary_link = 25,
+                tertiary_link = 24,
+                living_street = 20,
+                service = 14,
+                pedestrian = 12,
+                track = 6,
+                bus_guideway = 15,
+                escape = 3,
+                raceway = 4,
+                road = 28,
+                busway = 13,
+                footway = 8,
+                bridleway = 7,
+                steps = 5,
+                corridor = 9,
+                path = 10,
+                cycleway = 11,
+                construction = 2
             }
 
 
