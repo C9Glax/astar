@@ -40,6 +40,8 @@ namespace OpenStreetMap_Importer
             }
             XmlReader reader = XmlReader.Create(mapData, readerSettings);
             reader.MoveToContent();
+
+            logger?.Log(LogLevel.INFO, "Importing ways and counting nodes...");
             while (reader.Read())
             {
                 if (reader.Name == "way" && reader.IsStartElement())
@@ -103,13 +105,19 @@ namespace OpenStreetMap_Importer
                 }
             }
 
-            logger?.Log(LogLevel.DEBUG, "Ways: {0} Nodes: {1}", ways.Count, nodes.Count);
+            logger?.Log(LogLevel.DEBUG, "Loaded Ways: {0} Required Nodes: {1}", ways.Count, count.Count);
 
             reader.Close();
-            if (File.Exists(filePath))
+            GC.Collect();
+            if (!File.Exists(filePath))
             {
-                mapData.Close();
+                mapData = new MemoryStream(OSM_Data.map);
+                logger?.Log(LogLevel.INFO, "Filepath '{0}' does not exist. Using standard file.", filePath);
+            }
+            else
+            {
                 mapData = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                logger?.Log(LogLevel.INFO, "Using file '{0}'", filePath);
             }
             reader = XmlReader.Create(mapData, readerSettings);
             reader.MoveToContent();
@@ -118,6 +126,7 @@ namespace OpenStreetMap_Importer
              * Second iteration
              * Import nodes that are needed by the "ways"
              */
+            logger?.Log(LogLevel.INFO, "Importing nodes...");
             while (reader.Read())
             {
                 if (reader.Name == "node")
@@ -134,13 +143,11 @@ namespace OpenStreetMap_Importer
                     }
                 }
             }
-
-            logger?.Log(LogLevel.INFO, "Import finished. Calculating distances.");
-
             /*
              * Add connections between nodes (only junctions, e.g. nodes are referenced more than once)
              * Remove non-junction nodes
              */
+            logger?.Log(LogLevel.INFO, "Calculating Edges and distances...");
             ulong edges = 0;
             foreach(Way way in ways)
             {
@@ -212,10 +219,9 @@ namespace OpenStreetMap_Importer
                 }
             }
             reader.Close();
+            GC.Collect();
 
-            
-
-            logger?.Log(LogLevel.DEBUG, "Edges: {0}", edges);
+            logger?.Log(LogLevel.DEBUG, "Loaded Edges: {0}", edges);
             return nodes.Where(node => count[node.Key] > 1).ToDictionary(node => node.Key, node => node.Value);
         }
 
