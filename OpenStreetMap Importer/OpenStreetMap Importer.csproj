@@ -9,7 +9,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Graph\Graph.csproj" />
-    <ProjectReference Include="..\Logging\Logging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Logging">
+      <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
