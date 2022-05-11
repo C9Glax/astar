@@ -4,8 +4,8 @@ Test of A* Algorithm
 #Project
 
 - *astar* and *Graph* can be used as standalone (combined)
-- *OpenStreetMap Importer* Loads a .osm file (currently as ressource included)
+- *OpenStreetMap Importer* Loads a .osm file (currently as ressource included). Requires *Graph*.
 - *Executable* ties everything together for testing
 
-[OpenStreetMap](https://www.openstreetmap.org/) data used.
+[OpenStreetMap](https://www.openstreetmap.org/) data included.
 ![grafik](https://user-images.githubusercontent.com/13404778/167040930-1a216ecb-c36d-4a19-8afc-310c06d2784e.png)
