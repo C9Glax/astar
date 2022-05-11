@@ -13,4 +13,10 @@
     <ProjectReference Include="..\OpenStreetMap Importer\OpenStreetMap Importer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Logging">
+      <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
