@@ -7,8 +7,21 @@ namespace OpenStreetMap_Importer
     public class Importer
     {
 
-        public static Dictionary<ulong, Node> Import(Logger ?logger = null)
+        public static Dictionary<ulong, Node> Import(string filePath = "", Logger ?logger = null)
         {
+
+            Stream mapData;
+            if (!File.Exists(filePath))
+            {
+                mapData = new MemoryStream(OSM_Data.map);
+                logger?.Log(LogLevel.INFO, "Filepath '{0}' does not exist.", filePath);
+            }
+            else
+            {
+                mapData = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                logger?.Log(LogLevel.INFO, "File '{0}' loaded.", filePath);
+            }
+
             List<Way> ways = new();
             Dictionary<ulong, Node> nodes = new();
 
@@ -26,7 +39,7 @@ namespace OpenStreetMap_Importer
                 IgnoreWhitespace = true,
                 IgnoreComments = true
             };
-            XmlReader reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
+            XmlReader reader = XmlReader.Create(mapData, readerSettings);
             reader.MoveToContent();
             while (reader.Read())
             {
@@ -94,7 +107,7 @@ namespace OpenStreetMap_Importer
             logger?.Log(LogLevel.DEBUG, "Ways: {0} Nodes: {1}", ways.Count, nodes.Count);
 
             reader.Close();
-            reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
+            reader = XmlReader.Create(mapData, readerSettings);
             reader.MoveToContent();
 
             /*
