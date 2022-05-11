@@ -7,10 +7,16 @@ namespace OpenStreetMap_Importer
     public class Importer
     {
 
-        public static Dictionary<ulong, Node> Import(Logger ?logger = null)
+        public static Dictionary<ulong, Node> Import(string filePath = "", Logger ?logger = null)
         {
             List<Way> ways = new();
             Dictionary<ulong, Node> nodes = new();
+            Stream mapData;
+            XmlReaderSettings readerSettings = new()
+            {
+                IgnoreWhitespace = true,
+                IgnoreComments = true
+            };
 
             bool wayTag = false;
             Way currentWay = new();
@@ -21,13 +27,21 @@ namespace OpenStreetMap_Importer
              * Import "ways" with a tag "highway"
              * Count occurances of "nodes" to find junctions
              */
-            XmlReaderSettings readerSettings = new()
+            
+            if (!File.Exists(filePath))
             {
-                IgnoreWhitespace = true,
-                IgnoreComments = true
-            };
-            XmlReader reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
+                mapData = new MemoryStream(OSM_Data.map);
+                logger?.Log(LogLevel.INFO, "Filepath '{0}' does not exist. Using standard file.", filePath);
+            }
+            else
+            {
+                mapData = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                logger?.Log(LogLevel.INFO, "Using file '{0}'", filePath);
+            }
+            XmlReader reader = XmlReader.Create(mapData, readerSettings);
             reader.MoveToContent();
+
+            logger?.Log(LogLevel.INFO, "Importing ways and counting nodes...");
             while (reader.Read())
             {
                 if (reader.Name == "way" && reader.IsStartElement())
@@ -91,16 +105,28 @@ namespace OpenStreetMap_Importer
                 }
             }
 
-            logger?.Log(LogLevel.DEBUG, "Ways: {0} Nodes: {1}", ways.Count, nodes.Count);
+            logger?.Log(LogLevel.DEBUG, "Loaded Ways: {0} Required Nodes: {1}", ways.Count, count.Count);
 
             reader.Close();
-            reader = XmlReader.Create(new MemoryStream(OSM_Data.map), readerSettings);
+            GC.Collect();
+            if (!File.Exists(filePath))
+            {
+                mapData = new MemoryStream(OSM_Data.map);
+                logger?.Log(LogLevel.INFO, "Filepath '{0}' does not exist. Using standard file.", filePath);
+            }
+            else
+            {
+                mapData = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                logger?.Log(LogLevel.INFO, "Using file '{0}'", filePath);
+            }
+            reader = XmlReader.Create(mapData, readerSettings);
             reader.MoveToContent();
 
             /*
              * Second iteration
              * Import nodes that are needed by the "ways"
              */
+            logger?.Log(LogLevel.INFO, "Importing nodes...");
             while (reader.Read())
             {
                 if (reader.Name == "node")
@@ -117,105 +143,85 @@ namespace OpenStreetMap_Importer
                     }
                 }
             }
-
-            logger?.Log(LogLevel.INFO, "Import finished. Calculating distances.");
-
             /*
              * Add connections between nodes (only junctions, e.g. nodes are referenced more than once)
              * Remove non-junction nodes
              */
+            logger?.Log(LogLevel.INFO, "Calculating Edges and distances...");
             ulong edges = 0;
             foreach(Way way in ways)
             {
                 Node junction1 = nodes[way.nodeIds[0]];
                 Node junction2;
                 double weight = 0;
+                //Iterate Node-ids in current way forwards or backwards (depending on way.direction)
                 if (way.direction == Way.wayDirection.forward)
                 {
-                    for (int index = 1; index < way.nodeIds.Count - 1; index++)
+                    for (int index = 0; index < way.nodeIds.Count - 1; index++)
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
-                        if (count[way.nodeIds[index]] > 1)
+                        Node nextNode = nodes[way.nodeIds[index + 1]];
+                        weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
+                        if (count[way.nodeIds[index + 1]] > 1 || index == way.nodeIds.Count - 2)
                         {
-                            junction2 = nodes[way.nodeIds[index]];
+                            /*
+                             * If Node is referenced more than once => Junction
+                             * If Node is last node of way => Junction
+                             * Add an edge between two junctions
+                             */
+                            junction2 = nodes[way.nodeIds[index + 1]];
                             junction1.edges.Add(new Edge(junction2, weight));
-                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
+                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
+                            edges++;
 
                             if (!way.oneway)
                             {
                                 junction2.edges.Add(new Edge(junction1, weight));
-                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
+                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index + 1], weight, way.nodeIds[index]);
                                 edges++;
                             }
 
                             junction1 = junction2;
                             weight = 0;
                         }
-                        else
-                        {
-                            Node nextNode = nodes[way.nodeIds[index + 1]];
-                            weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                        }
-                        edges++;
-                    }
-
-                    junction2 = nodes[way.nodeIds[way.nodeIds.Count - 1]];
-                    junction1.edges.Add(new Edge(junction2, weight));
-                    logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
-
-                    if (!way.oneway)
-                    {
-                        junction2.edges.Add(new Edge(junction1, weight));
-                        logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
-                        edges++;
                     }
                 }
                 else
                 {
-                    for (int index = way.nodeIds.Count - 2; index > 1; index--)
+                    for (int index = way.nodeIds.Count - 2; index > 0; index--)
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
-                        if (count[way.nodeIds[index]] > 1)
+                        Node nextNode = nodes[way.nodeIds[index - 1]];
+                        weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
+                        if (count[way.nodeIds[index - 1]] > 1 || index == 1)
                         {
-                            junction2 = nodes[way.nodeIds[index]];
+                            /*
+                             * If Node is referenced more than once => Junction
+                             * If Node is last node of way => Junction
+                             * Add an edge between two junctions
+                             */
+                            junction2 = nodes[way.nodeIds[index - 1]];
                             junction1.edges.Add(new Edge(junction2, weight));
-                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
+                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
+                            edges++;
 
                             if (!way.oneway)
                             {
                                 junction2.edges.Add(new Edge(junction1, weight));
-                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
+                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index - 1], weight, way.nodeIds[index]);
                                 edges++;
                             }
 
                             junction1 = junction2;
                             weight = 0;
                         }
-                        else
-                        {
-                            Node nextNode = nodes[way.nodeIds[index - 1]];
-                            weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                        }
-                        edges++;
-                    }
-
-                    junction2 = nodes[way.nodeIds[way.nodeIds.Count - 1]];
-                    junction1.edges.Add(new Edge(junction2, weight));
-                    logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction1.lat, junction1.lon, weight, junction2.lat, junction2.lon);
-
-                    if (!way.oneway)
-                    {
-                        junction2.edges.Add(new Edge(junction1, weight));
-                        logger?.Log(LogLevel.VERBOSE, "EDGE {0} {1} -- {2} --> {3} {4}", junction2.lat, junction2.lon, weight, junction1.lat, junction1.lon);
-                        edges++;
                     }
                 }
             }
             reader.Close();
+            GC.Collect();
 
-            
-
-            logger?.Log(LogLevel.DEBUG, "Edges: {0}", edges);
+            logger?.Log(LogLevel.DEBUG, "Loaded Edges: {0}", edges);
             return nodes.Where(node => count[node.Key] > 1).ToDictionary(node => node.Key, node => node.Value);
         }
 
