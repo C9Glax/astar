@@ -17,7 +17,7 @@ namespace astar
             {
                 Node n1 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
                 Node n2 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
-                logger?.Log(LogLevel.INFO, "From {0} - {1} to {2} - {3}", n1.lat, n1.lon, n2.lat, n2.lon);
+                logger?.Log(LogLevel.INFO, "From {0} - {1} to {2} - {3} Distance {4}", n1.lat, n1.lon, n2.lat, n2.lon, Utils.DistanceBetweenNodes(n1,n2));
                 path = FindPath(ref nodes, n1, n2, ref logger);
             }
 
@@ -41,7 +41,7 @@ namespace astar
         /*
          * 
          */
-        private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger ?logger)
+        private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger? logger)
         {
             Reset(ref nodes);
             List<Node> toVisit = new();
@@ -49,7 +49,7 @@ namespace astar
             Node currentNode = start;
             start.pathLength = 0;
             start.goalDistance = Utils.DistanceBetweenNodes(start, goal);
-            while(currentNode != goal && toVisit.Count > 0)
+            while (currentNode != goal && toVisit.Count > 0)
             {
                 currentNode = toVisit.First();
                 logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
@@ -71,7 +71,37 @@ namespace astar
 
             List<Node> path = new();
 
-            if (currentNode != goal)
+            if (currentNode == goal)
+            {
+                if(toVisit[0].pathLength < goal.pathLength)
+                {
+                    logger?.Log(LogLevel.INFO, "Way found, checking for shorter option.");
+                    while (toVisit[0].pathLength < goal.pathLength)
+                    {
+                        currentNode = toVisit.First();
+                        logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
+                        //Check all neighbors of current node
+                        foreach (Edge e in currentNode.edges)
+                        {
+                            if (e.neighbor.goalDistance == double.MaxValue)
+                                e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
+                            if (e.neighbor.pathLength > currentNode.pathLength + e.weight)
+                            {
+                                e.neighbor.pathLength = currentNode.pathLength + e.weight;
+                                e.neighbor.previousNode = currentNode;
+                                toVisit.Add(e.neighbor);
+                            }
+                        }
+                        toVisit.Remove(currentNode); //"Mark" as visited
+                        toVisit.Sort(CompareDistanceToGoal);
+                    }
+                }
+                else
+                {
+                    logger?.Log(LogLevel.INFO, "Way found, shortest option.");
+                }
+            }
+            else
             {
                 logger?.Log(LogLevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
                 return path;
@@ -97,9 +127,9 @@ namespace astar
             else
             {
                 if (n1.goalDistance < n2.goalDistance)
-                    return 1;
-                else if (n1.goalDistance > n2.goalDistance)
                     return -1;
+                else if (n1.goalDistance > n2.goalDistance)
+                    return 1;
                 else return 0;
             }
         }
