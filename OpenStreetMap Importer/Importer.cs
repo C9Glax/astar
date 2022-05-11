@@ -143,7 +143,7 @@ namespace OpenStreetMap_Importer
                     {
                         Node currentNode = nodes[way.nodeIds[index]];
                         Node neighborNode = nodes[way.nodeIds[index - 1]];
-                        double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode);
+                        double weight = Utils.DistanceBetweenNodes(currentNode, neighborNode) / ((uint)way.highway);
                         currentNode.edges.Add(new Edge(neighborNode, weight));
                         logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
                         edges++;
@@ -168,7 +168,40 @@ namespace OpenStreetMap_Importer
             public wayDirection direction;
             public highwayType highway;
             public enum wayDirection { forward, backward }
-            public enum highwayType { NONE, motorway, trunk, primary, secondary, tertiary, unclassified, residential, motorway_link, trunk_link, primary_link, secondary_link, tertiary_link, living_street, service, pedestrian, track, bus_guideway, escape, raceway, road, busway, footway, bridleway, steps, corridor, path, cycleway, construction}
+            public enum highwayType : uint
+            {
+                NONE = 1,
+                motorway = 130,
+                trunk = 130,
+                primary = 100,
+                secondary = 100,
+                tertiary = 80,
+                unclassified = 50,
+                residential = 30,
+                motorway_link = 50,
+                trunk_link = 50,
+                primary_link = 30,
+                secondary_link = 30,
+                tertiary_link = 20,
+                living_street = 5,
+                service = 1,
+                pedestrian = 1,
+                track = 5,
+                bus_guideway = 1,
+                escape = 1,
+                raceway = 1,
+                road = 30,
+                busway = 1,
+                footway = 1,
+                bridleway = 1,
+                steps = 1,
+                corridor = 1,
+                path = 1,
+                cycleway = 1,
+                construction = 1
+            }
+
+
             public Way()
             {
                 this.nodeIds = new List<ulong>();
