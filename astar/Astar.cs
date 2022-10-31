@@ -34,7 +34,7 @@ namespace astar
             foreach(Node n in nodes.Values)
             {
                 n.previousNode = Node.nullnode;
-                n.goalDistance = double.MaxValue;
+                n.goalDistance = float.MaxValue;
             }
         }
 

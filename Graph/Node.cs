@@ -4,21 +4,21 @@
     {
         public float lat { get; }
         public float lon { get; }
-        public List<Edge> edges { get; }
+        public HashSet<Edge> edges { get; }
 
         public Node previousNode { get; set; }
-        public double goalDistance { get; set; }
+        public float goalDistance { get; set; }
 
-        public double pathLength { get; set; }
+        public float pathLength { get; set; }
 
         public Node(float lat, float lon)
         {
             this.lat = lat;
             this.lon = lon;
-            this.edges = new List<Edge>();
+            this.edges = new();
             this.previousNode = nullnode;
-            this.goalDistance = double.MaxValue;
-            this.pathLength = double.MaxValue;
+            this.goalDistance = float.MaxValue;
+            this.pathLength = float.MaxValue;
         }
         public static Node nullnode = new(float.NaN, float.NaN);
     }
