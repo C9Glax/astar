@@ -13,192 +13,214 @@ namespace OpenStreetMap_Importer
             IgnoreComments = true
         };
 
-        public static Dictionary<ulong, Node> Import(string filePath = "", Logger ?logger = null)
+        public static Dictionary<ulong, Node> Import(string filePath = "", bool onlyJunctions = true, Logger? logger = null)
         {
-            Dictionary<ulong, Node> nodes;
-
             /*
-             * First iteration
-             * Import "ways" with a tag "highway"
-             * Count occurances of "nodes" to find junctions
+             * Count Node occurances when tag is "highway"
              */
-
+            logger?.Log(LogLevel.INFO, "Counting Node-Occurances...");
             Stream mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
-            Dictionary<ulong, ushort> occuranceCount = new();
-            List<Way> ways = GetWays(mapData, ref occuranceCount, logger);
+            Dictionary<ulong, ushort> occuranceCount = CountNodeOccurances(mapData, logger);
             mapData.Close();
-            logger?.Log(LogLevel.DEBUG, "Loaded Ways: {0} Required Nodes: {1}", ways.Count, occuranceCount.Count);
+            logger?.Log(LogLevel.DEBUG, "Way Nodes: {0}", occuranceCount.Count);
 
             /*
-             * Second iteration
-             * Import nodes that are needed by the "ways"
+             * Import Nodes and Edges
              */
+            logger?.Log(LogLevel.INFO, "Importing Graph...");
             mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
-            nodes = ImportNodes(mapData, occuranceCount, logger);
+            Dictionary<ulong, Node> graph = CreateGraph(mapData, occuranceCount, onlyJunctions, logger);
             mapData.Close();
+            occuranceCount.Clear();
+            GC.Collect();
+            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", graph.Count);
 
-
-            /*
-             * Add connections between nodes (only junctions, e.g. nodes are referenced more than once)
-             * Remove non-junction nodes
-             */
-            logger?.Log(LogLevel.INFO, "Calculating Edges and distances...");
-            ulong edges = 0;
-            foreach(Way way in ways)
-            {
-                Node junction1 = nodes[way.nodeIds[0]];
-                Node junction2;
-                float weight = 0;
-                //Iterate Node-ids in current way forwards or backwards (depending on way.direction)
-                if (way.IsForward())
-                {
-                    for (int index = 0; index < way.nodeIds.Count - 1; index++)
-                    {
-                        Node currentNode = nodes[way.nodeIds[index]];
-                        Node nextNode = nodes[way.nodeIds[index + 1]];
-                        weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                        if (occuranceCount[way.nodeIds[index + 1]] > 1 || index == way.nodeIds.Count - 2)
-                        {
-                            /*
-                             * If Node is referenced more than once => Junction
-                             * If Node is last node of way => Junction
-                             * Add an edge between two junctions
-                             */
-                            junction2 = nodes[way.nodeIds[index + 1]];
-                            junction1.edges.Add(new Edge(junction2, weight));
-                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
-                            edges++;
-
-                            if (!way.IsOneWay())
-                            {
-                                junction2.edges.Add(new Edge(junction1, weight));
-                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index + 1], weight, way.nodeIds[index]);
-                                edges++;
-                            }
-
-                            junction1 = junction2;
-                            weight = 0;
-                        }
-                    }
-                }
-                else
-                {
-                    for (int index = way.nodeIds.Count - 2; index > 0; index--)
-                    {
-                        Node currentNode = nodes[way.nodeIds[index]];
-                        Node nextNode = nodes[way.nodeIds[index - 1]];
-                        weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                        if (occuranceCount[way.nodeIds[index - 1]] > 1 || index == 1)
-                        {
-                            /*
-                             * If Node is referenced more than once => Junction
-                             * If Node is last node of way => Junction
-                             * Add an edge between two junctions
-                             */
-                            junction2 = nodes[way.nodeIds[index - 1]];
-                            junction1.edges.Add(new Edge(junction2, weight));
-                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
-                            edges++;
-
-                            if (!way.IsOneWay())
-                            {
-                                junction2.edges.Add(new Edge(junction1, weight));
-                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index - 1], weight, way.nodeIds[index]);
-                                edges++;
-                            }
-
-                            junction1 = junction2;
-                            weight = 0;
-                        }
-                    }
-                }
-            }
-
-            logger?.Log(LogLevel.DEBUG, "Loaded Edges: {0}", edges);
-            return nodes.Where(node => occuranceCount[node.Key] > 1).ToDictionary(node => node.Key, node => node.Value);
+            return graph;
         }
 
-        private static List<Way> GetWays(Stream mapData, ref Dictionary<ulong, ushort> occuranceCount, Logger? logger = null)
+        private static Dictionary<ulong, ushort> CountNodeOccurances(Stream mapData, Logger? logger = null)
         {
-            List<Way> _ways = new();
-            bool _isWay = false;
-            Way _currentWay = new();
+            Dictionary<ulong, ushort> _occurances = new();
 
             XmlReader _reader = XmlReader.Create(mapData, readerSettings);
+            XmlReader _wayReader;
             _reader.MoveToContent();
 
-            logger?.Log(LogLevel.INFO, "Importing ways and counting nodes...");
-            while (_reader.Read())
-            {
-                if (_reader.Name == "way" && _reader.IsStartElement())
-                {
-                    logger?.Log(LogLevel.VERBOSE, "WAY {0} nodes {1}", _currentWay.GetHighwayType().ToString(), _currentWay.nodeIds.Count);
-                    if (_currentWay.GetHighwayType() != Way.type.NONE)
-                    {
-                        _ways.Add(_currentWay);
-                        foreach (ulong id in _currentWay.nodeIds)
-                            if (occuranceCount.ContainsKey(id))
-                                occuranceCount[id]++;
-                            else
-                                occuranceCount.TryAdd(id, 1);
-                    }
-                    _isWay = true;
-                    _currentWay = new Way();
-                }
-                else if (_reader.Name == "tag" && _isWay)
-                {
-#pragma warning disable CS8600 //tags will always have a value and key
-#pragma warning disable CS8604
-                    string value = _reader.GetAttribute("v");
-                    string key = _reader.GetAttribute("k");
-                    logger?.Log(LogLevel.VERBOSE, "TAG {0} {1}", key, value);
-#pragma warning restore CS8600
-                    _currentWay.AddTag(key, value);
-#pragma warning restore CS8604
-                }
-                else if (_reader.Name == "nd" && _isWay)
-                {
-                    ulong id = Convert.ToUInt64(_reader.GetAttribute("ref"));
-                    _currentWay.nodeIds.Add(id);
-                    logger?.Log(LogLevel.VERBOSE, "nd: {0}", id);
-                }
-                else if (_reader.Name == "node")
-                {
-                    _isWay = false;
-                }
-            }
+            bool _isHighway;
+            List<ulong> _currentIds = new();
 
+            while (_reader.ReadToFollowing("way"))
+            {
+                _isHighway = false;
+                _currentIds.Clear();
+                _wayReader = _reader.ReadSubtree();
+                while (_wayReader.Read())
+                {
+                    if (_reader.Name == "tag" && _reader.GetAttribute("k").Equals("highway"))
+                    {
+                        try
+                        {
+                            if (!Enum.Parse(typeof(Way.type), _reader.GetAttribute("v"), true).Equals(Way.type.NONE))
+                                _isHighway = true;
+                        }
+                        catch (ArgumentException) { };
+                    }
+                    else if(_reader.Name == "nd")
+                    {
+                        try
+                        {
+                            _currentIds.Add(Convert.ToUInt64(_reader.GetAttribute("ref")));
+                        }
+                        catch (FormatException) { };
+                    }
+                }
+                if (_isHighway)
+                {
+                    foreach(ulong _id in _currentIds)
+                    {
+                        if (!_occurances.TryAdd(_id, 1))
+                            _occurances[_id]++;
+                    }
+                }
+                _wayReader.Close();
+            }
             _reader.Close();
             GC.Collect();
-            return _ways;
+
+            return _occurances;
         }
 
-        private static Dictionary<ulong, Node> ImportNodes(Stream mapData, Dictionary<ulong, ushort> occuranceCount, Logger? logger = null)
+        private static Dictionary<ulong, Node> CreateGraph(Stream mapData, Dictionary<ulong, ushort> occuranceCount, bool onlyJunctions, Logger? logger = null)
         {
-            Dictionary<ulong, Node> nodes = new();
-            XmlReader reader = XmlReader.Create(mapData, readerSettings);
-            reader.MoveToContent();
+            Dictionary<ulong, Node> _tempAll = new();
+            Dictionary<ulong, Node> _graph = new();
 
-            logger?.Log(LogLevel.INFO, "Importing nodes...");
-            while (reader.Read())
+            XmlReader _reader = XmlReader.Create(mapData, readerSettings);
+            XmlReader _wayReader;
+            _reader.MoveToContent();
+
+            while (_reader.Read())
             {
-                if (reader.Name == "node")
+                if(_reader.Name == "node")
                 {
-                    ulong id = Convert.ToUInt64(reader.GetAttribute("id"));
+                    ulong id = Convert.ToUInt64(_reader.GetAttribute("id"));
                     if (occuranceCount.ContainsKey(id))
                     {
 #pragma warning disable CS8602 //node will always have a lat and lon
-                        float lat = Convert.ToSingle(reader.GetAttribute("lat").Replace('.', ','));
-                        float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
+                        float lat = Convert.ToSingle(_reader.GetAttribute("lat").Replace('.', ','));
+                        float lon = Convert.ToSingle(_reader.GetAttribute("lon").Replace('.', ','));
 #pragma warning restore CS8602
-                        nodes.TryAdd(id, new Node(lat, lon));
+                        _tempAll.Add(id, new Node(lat, lon));
                         logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, occuranceCount[id]);
                     }
                 }
+                else if(_reader.Name == "way")
+                {
+                    _wayReader = _reader.ReadSubtree();
+                    Way _currentWay = new();
+                    while (_wayReader.Read())
+                    {
+                        _wayReader = _reader.ReadSubtree();
+                        while (_wayReader.Read())
+                        {
+                            if (_reader.Name == "tag")
+                            {
+#pragma warning disable CS8600 //tags will always have a value and key
+#pragma warning disable CS8604
+                                string _value = _reader.GetAttribute("v");
+                                string _key = _reader.GetAttribute("k");
+                                logger?.Log(LogLevel.VERBOSE, "TAG {0} {1}", _key, _value);
+                                _currentWay.AddTag(_key, _value);
+#pragma warning restore CS8600
+#pragma warning restore CS8604
+                            }
+                            else if (_reader.Name == "nd")
+                            {
+                                ulong _id = Convert.ToUInt64(_reader.GetAttribute("ref"));
+                                _currentWay.nodeIds.Add(_id);
+                                logger?.Log(LogLevel.VERBOSE, "nd: {0}", _id);
+                            }
+                        }
+                    }
+                    _wayReader.Close();
+
+                    if (!_currentWay.GetHighwayType().Equals(Way.type.NONE))
+                    {
+                        logger?.Log(LogLevel.VERBOSE, "WAY Nodes: {0} Type: {1}", _currentWay.nodeIds.Count, _currentWay.GetHighwayType());
+                        if (!onlyJunctions)
+                        {
+                            for (int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
+                            {
+                                Node _n1 = _tempAll[_currentWay.nodeIds[_nodeIdIndex]];
+                                Node _n2 = _tempAll[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                float _weight = Utils.DistanceBetweenNodes(_n1, _n2) / _currentWay.GetMaxSpeed();
+                                if (!_currentWay.IsOneWay())
+                                {
+                                    _n1.edges.Add(new Edge(_n2, _weight));
+                                    _n2.edges.Add(new Edge(_n1, _weight));
+                                }
+                                else if (_currentWay.IsForward())
+                                {
+                                    _n1.edges.Add(new Edge(_n2, _weight));
+                                }
+                                else
+                                {
+                                    _n2.edges.Add(new Edge(_n1, _weight));
+                                }
+                            }
+                            _graph = _tempAll;
+                        }
+                        else
+                        {
+                            Node _junctionStart, _nextNode;
+                            if (!_tempAll.TryGetValue(_currentWay.nodeIds[0], out _junctionStart))
+                            {
+                                _junctionStart = _graph[_currentWay.nodeIds[0]];
+                            }
+                            else
+                            {
+                                _graph.TryAdd(_currentWay.nodeIds[0], _junctionStart);
+                                _tempAll.Remove(_currentWay.nodeIds[0]);
+                            }
+                            Node _currentNode = _junctionStart;
+                            float _distance = 0, _weight;
+                            for(int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
+                            {
+                                if (!_tempAll.TryGetValue(_currentWay.nodeIds[_nodeIdIndex + 1], out _nextNode))
+                                    _nextNode = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _distance += Utils.DistanceBetweenNodes(_currentNode, _nextNode);
+                                if (occuranceCount[_currentWay.nodeIds[_nodeIdIndex]] > 1 || _nodeIdIndex == _currentWay.nodeIds.Count - 2) //junction found
+                                {
+                                    _weight = _distance / _currentWay.GetMaxSpeed();
+                                    _distance = 0;
+                                    _graph.TryAdd(_currentWay.nodeIds[_nodeIdIndex + 1], _nextNode);
+                                    if (!_currentWay.IsOneWay())
+                                    {
+                                        _junctionStart.edges.Add(new Edge(_nextNode, _weight));
+                                        _nextNode.edges.Add(new Edge(_junctionStart, _weight));
+                                    }
+                                    else if (_currentWay.IsForward())
+                                    {
+                                        _junctionStart.edges.Add(new Edge(_nextNode, _weight));
+                                    }
+                                    else
+                                    {
+                                        _nextNode.edges.Add(new Edge(_junctionStart, _weight));
+                                    }
+                                }
+                                else
+                                {
+                                    _tempAll.Remove(_currentWay.nodeIds[_nodeIdIndex]);
+                                }
+                                _currentNode = _nextNode;
+                            }
+                        }
+                    }
+                }
             }
-            reader.Close();
+            _reader.Close();
             GC.Collect();
-            return nodes;
+            return _graph;
         }
 
         internal struct Way
