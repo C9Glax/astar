@@ -1,4 +1,7 @@
-﻿using Logging;
+﻿#pragma warning disable CS8600
+#pragma warning disable CS8602
+#pragma warning disable CS8604
+using Logging;
 using System.Xml;
 using Graph;
 
@@ -94,6 +97,9 @@ namespace OpenStreetMap_Importer
         {
             Dictionary<ulong, Node> _tempAll = new();
             Dictionary<ulong, Node> _graph = new();
+            Way _currentWay;
+            Node _n1, _n2, _currentNode;
+            float _weight, _distance = 0;
 
             XmlReader _reader = XmlReader.Create(mapData, readerSettings);
             XmlReader _wayReader;
@@ -106,10 +112,8 @@ namespace OpenStreetMap_Importer
                     ulong id = Convert.ToUInt64(_reader.GetAttribute("id"));
                     if (occuranceCount.ContainsKey(id))
                     {
-#pragma warning disable CS8602 //node will always have a lat and lon
                         float lat = Convert.ToSingle(_reader.GetAttribute("lat").Replace('.', ','));
                         float lon = Convert.ToSingle(_reader.GetAttribute("lon").Replace('.', ','));
-#pragma warning restore CS8602
                         _tempAll.Add(id, new Node(lat, lon));
                         logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, occuranceCount[id]);
                     }
@@ -117,22 +121,19 @@ namespace OpenStreetMap_Importer
                 else if(_reader.Name == "way")
                 {
                     _wayReader = _reader.ReadSubtree();
-                    Way _currentWay = new();
+                    _currentWay = new();
                     while (_wayReader.Read())
                     {
                         _wayReader = _reader.ReadSubtree();
+                        _currentWay.AddTag("id", _reader.GetAttribute("id"));
                         while (_wayReader.Read())
                         {
                             if (_reader.Name == "tag")
                             {
-#pragma warning disable CS8600 //tags will always have a value and key
-#pragma warning disable CS8604
                                 string _value = _reader.GetAttribute("v");
                                 string _key = _reader.GetAttribute("k");
                                 logger?.Log(LogLevel.VERBOSE, "TAG {0} {1}", _key, _value);
                                 _currentWay.AddTag(_key, _value);
-#pragma warning restore CS8600
-#pragma warning restore CS8604
                             }
                             else if (_reader.Name == "nd")
                             {
@@ -151,9 +152,9 @@ namespace OpenStreetMap_Importer
                         {
                             for (int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
                             {
-                                Node _n1 = _tempAll[_currentWay.nodeIds[_nodeIdIndex]];
-                                Node _n2 = _tempAll[_currentWay.nodeIds[_nodeIdIndex + 1]];
-                                float _weight = Utils.DistanceBetweenNodes(_n1, _n2) / _currentWay.GetMaxSpeed();
+                                _n1 = _tempAll[_currentWay.nodeIds[_nodeIdIndex]];
+                                _n2 = _tempAll[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _weight = Utils.DistanceBetweenNodes(_n1, _n2) * 1000 / _currentWay.GetMaxSpeed();
                                 if (!_currentWay.IsOneWay())
                                 {
                                     _n1.edges.Add(new Edge(_n2, _weight));
@@ -172,47 +173,45 @@ namespace OpenStreetMap_Importer
                         }
                         else
                         {
-                            Node _junctionStart, _nextNode;
-                            if (!_tempAll.TryGetValue(_currentWay.nodeIds[0], out _junctionStart))
+                            if (!_tempAll.TryGetValue(_currentWay.nodeIds[0], out _n1))
                             {
-                                _junctionStart = _graph[_currentWay.nodeIds[0]];
+                                _n1 = _graph[_currentWay.nodeIds[0]];
                             }
                             else
                             {
-                                _graph.TryAdd(_currentWay.nodeIds[0], _junctionStart);
+                                _graph.TryAdd(_currentWay.nodeIds[0], _n1);
                                 _tempAll.Remove(_currentWay.nodeIds[0]);
                             }
-                            Node _currentNode = _junctionStart;
-                            float _distance = 0, _weight;
+                            _currentNode = _n1;
                             for(int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
                             {
-                                if (!_tempAll.TryGetValue(_currentWay.nodeIds[_nodeIdIndex + 1], out _nextNode))
-                                    _nextNode = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
-                                _distance += Utils.DistanceBetweenNodes(_currentNode, _nextNode);
+                                if (!_tempAll.TryGetValue(_currentWay.nodeIds[_nodeIdIndex + 1], out _n2))
+                                    _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _distance += Utils.DistanceBetweenNodes(_currentNode, _n2);
                                 if (occuranceCount[_currentWay.nodeIds[_nodeIdIndex]] > 1 || _nodeIdIndex == _currentWay.nodeIds.Count - 2) //junction found
                                 {
-                                    _weight = _distance / _currentWay.GetMaxSpeed();
+                                    _weight = _distance * 1000 / _currentWay.GetMaxSpeed();
                                     _distance = 0;
-                                    _graph.TryAdd(_currentWay.nodeIds[_nodeIdIndex + 1], _nextNode);
+                                    _graph.TryAdd(_currentWay.nodeIds[_nodeIdIndex + 1], _n2);
                                     if (!_currentWay.IsOneWay())
                                     {
-                                        _junctionStart.edges.Add(new Edge(_nextNode, _weight));
-                                        _nextNode.edges.Add(new Edge(_junctionStart, _weight));
+                                        _n1.edges.Add(new Edge(_n2, _weight, _currentWay.GetId()));
+                                        _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
                                     }
                                     else if (_currentWay.IsForward())
                                     {
-                                        _junctionStart.edges.Add(new Edge(_nextNode, _weight));
+                                        _n1.edges.Add(new Edge(_n2, _weight, _currentWay.GetId()));
                                     }
                                     else
                                     {
-                                        _nextNode.edges.Add(new Edge(_junctionStart, _weight));
+                                        _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
                                     }
                                 }
                                 else
                                 {
                                     _tempAll.Remove(_currentWay.nodeIds[_nodeIdIndex]);
                                 }
-                                _currentNode = _nextNode;
+                                _currentNode = _n2;
                             }
                         }
                     }
@@ -313,10 +312,18 @@ namespace OpenStreetMap_Importer
                                 break;
                         }
                         break;
+                    case "id":
+                        this.tags.Add(key, Convert.ToUInt64(value));
+                        break;
                     default:
                         logger?.Log(LogLevel.VERBOSE, "Tag {0} - {1} was not added.", key, value);
                         break;
                 }
+            }
+
+            public ulong GetId()
+            {
+                return this.tags.ContainsKey("id") ? (ulong)this.tags["id"] : 0;
             }
 
             public type GetHighwayType()
