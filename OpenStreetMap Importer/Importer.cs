@@ -25,7 +25,7 @@ namespace OpenStreetMap_Importer
 
             Stream mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
             Dictionary<ulong, ushort> occuranceCount = new();
-            List<Way> ways = GetWays(mapData, ref occuranceCount);
+            List<Way> ways = GetWays(mapData, ref occuranceCount, logger);
             mapData.Close();
             logger?.Log(LogLevel.DEBUG, "Loaded Ways: {0} Required Nodes: {1}", ways.Count, occuranceCount.Count);
 
@@ -50,7 +50,7 @@ namespace OpenStreetMap_Importer
                 Node junction2;
                 float weight = 0;
                 //Iterate Node-ids in current way forwards or backwards (depending on way.direction)
-                if (way.direction == Way.wayDirection.forward)
+                if (way.IsForward())
                 {
                     for (int index = 0; index < way.nodeIds.Count - 1; index++)
                     {
@@ -69,7 +69,7 @@ namespace OpenStreetMap_Importer
                             logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
                             edges++;
 
-                            if (!way.oneway)
+                            if (!way.IsOneWay())
                             {
                                 junction2.edges.Add(new Edge(junction1, weight));
                                 logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index + 1], weight, way.nodeIds[index]);
@@ -100,7 +100,7 @@ namespace OpenStreetMap_Importer
                             logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
                             edges++;
 
-                            if (!way.oneway)
+                            if (!way.IsOneWay())
                             {
                                 junction2.edges.Add(new Edge(junction1, weight));
                                 logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index - 1], weight, way.nodeIds[index]);
@@ -132,8 +132,8 @@ namespace OpenStreetMap_Importer
             {
                 if (_reader.Name == "way" && _reader.IsStartElement())
                 {
-                    logger?.Log(LogLevel.VERBOSE, "WAY {0} nodes {1}", _currentWay.highway.ToString(), _currentWay.nodeIds.Count);
-                    if (_currentWay.highway != Way.highwayType.NONE)
+                    logger?.Log(LogLevel.VERBOSE, "WAY {0} nodes {1}", _currentWay.GetHighwayType().ToString(), _currentWay.nodeIds.Count);
+                    if (_currentWay.GetHighwayType() != Way.type.NONE)
                     {
                         _ways.Add(_currentWay);
                         foreach (ulong id in _currentWay.nodeIds)
@@ -153,30 +153,7 @@ namespace OpenStreetMap_Importer
                     string key = _reader.GetAttribute("k");
                     logger?.Log(LogLevel.VERBOSE, "TAG {0} {1}", key, value);
 #pragma warning restore CS8600
-                    switch (key)
-                    {
-                        case "highway":
-                            _currentWay.SetHighwayType(value);
-                            break;
-                        case "oneway":
-                            switch (value)
-                            {
-                                case "yes":
-                                    _currentWay.oneway = true;
-                                    break;
-                                /*case "no":
-                                     currentWay.oneway = false;
-                                     break;*/
-                                case "-1":
-                                    _currentWay.oneway = true;
-                                    _currentWay.direction = Way.wayDirection.backward;
-                                    break;
-                            }
-                            break;
-                            /*case "name":
-                            
-                            break;*/
-                    }
+                    _currentWay.AddTag(key, value);
 #pragma warning restore CS8604
                 }
                 else if (_reader.Name == "nd" && _isWay)
@@ -227,62 +204,118 @@ namespace OpenStreetMap_Importer
         internal struct Way
         {
             public List<ulong> nodeIds;
-            public bool oneway;
-            public wayDirection direction;
-            public highwayType highway;
-            public enum wayDirection { forward, backward }
+            private Dictionary<string, object> tags;
 
-            public Dictionary<highwayType, uint> speed = new() {
-                { highwayType.NONE, 1 },
-                { highwayType.motorway, 130 },
-                { highwayType.trunk, 125 },
-                { highwayType.primary, 110 },
-                { highwayType.secondary, 100 },
-                { highwayType.tertiary, 90 },
-                { highwayType.unclassified, 40 },
-                { highwayType.residential, 20 },
-                { highwayType.motorway_link, 50 },
-                { highwayType.trunk_link, 50 },
-                { highwayType.primary_link, 30 },
-                { highwayType.secondary_link, 25 },
-                { highwayType.tertiary_link, 25 },
-                { highwayType.living_street, 20 },
-                { highwayType.service, 10 },
-                { highwayType.pedestrian, 10 },
-                { highwayType.track, 1 },
-                { highwayType.bus_guideway, 5 },
-                { highwayType.escape, 1 },
-                { highwayType.raceway, 1 },
-                { highwayType.road, 25 },
-                { highwayType.busway, 5 },
-                { highwayType.footway, 1 },
-                { highwayType.bridleway, 1 },
-                { highwayType.steps, 1 },
-                { highwayType.corridor, 1 },
-                { highwayType.path, 10 },
-                { highwayType.cycleway, 5 },
-                { highwayType.construction, 1 }
+
+            public Dictionary<type, int> speed = new() {
+                { type.NONE, 1 },
+                { type.motorway, 130 },
+                { type.trunk, 125 },
+                { type.primary, 110 },
+                { type.secondary, 100 },
+                { type.tertiary, 90 },
+                { type.unclassified, 40 },
+                { type.residential, 20 },
+                { type.motorway_link, 50 },
+                { type.trunk_link, 50 },
+                { type.primary_link, 30 },
+                { type.secondary_link, 25 },
+                { type.tertiary_link, 25 },
+                { type.living_street, 20 },
+                { type.service, 10 },
+                { type.pedestrian, 10 },
+                { type.track, 1 },
+                { type.bus_guideway, 5 },
+                { type.escape, 1 },
+                { type.raceway, 1 },
+                { type.road, 25 },
+                { type.busway, 5 },
+                { type.footway, 1 },
+                { type.bridleway, 1 },
+                { type.steps, 1 },
+                { type.corridor, 1 },
+                { type.path, 10 },
+                { type.cycleway, 5 },
+                { type.construction, 1 }
             };
-            public enum highwayType { NONE, motorway, trunk, primary, secondary, tertiary, unclassified, residential, motorway_link, trunk_link, primary_link, secondary_link, tertiary_link, living_street, service, pedestrian, track, bus_guideway, escape, raceway, road, busway, footway, bridleway, steps, corridor, path, cycleway, construction }
+            public enum type { NONE, motorway, trunk, primary, secondary, tertiary, unclassified, residential, motorway_link, trunk_link, primary_link, secondary_link, tertiary_link, living_street, service, pedestrian, track, bus_guideway, escape, raceway, road, busway, footway, bridleway, steps, corridor, path, cycleway, construction }
 
 
             public Way()
             {
                 this.nodeIds = new List<ulong>();
-                this.oneway = false;
-                this.direction = wayDirection.forward;
-                this.highway = highwayType.NONE;
+                this.tags = new();
+            }
+            public void AddTag(string key, string value, Logger? logger = null)
+            {
+                switch (key)
+                {
+                    case "highway":
+                        try
+                        {
+                            this.tags.Add(key, (type)Enum.Parse(typeof(type), value, true));
+                            if (this.GetMaxSpeed().Equals((int)type.NONE))
+                            {
+                                this.tags["maxspeed"] = (int)this.GetHighwayType();
+                            }
+                        }
+                        catch (ArgumentException)
+                        {
+                            this.tags.Add(key, type.NONE);
+                        }
+                        break;
+                    case "maxspeed":
+                        try
+                        {
+                            if (this.tags.ContainsKey("maxspeed"))
+                                this.tags["maxspeed"] = Convert.ToInt32(value);
+                            else
+                                this.tags.Add(key, Convert.ToInt32(value));
+                        }
+                        catch (FormatException)
+                        {
+                            this.tags.Add(key, (int)this.GetHighwayType());
+                        }
+                        break;
+                    case "oneway":
+                        switch (value)
+                        {
+                            case "yes":
+                                this.tags.Add(key, true);
+                                break;
+                            case "-1":
+                                this.tags.Add("forward", false);
+                                break;
+                            case "no":
+                                this.tags.Add(key, false);
+                                break;
+                        }
+                        break;
+                    default:
+                        logger?.Log(LogLevel.VERBOSE, "Tag {0} - {1} was not added.", key, value);
+                        break;
+                }
             }
 
-            public void SetHighwayType(string waytype)
+            public type GetHighwayType()
             {
-                try
-                {
-                    this.highway = (highwayType)Enum.Parse(typeof(highwayType), waytype, true);
-                }catch(Exception)
-                {
-                    this.highway = highwayType.NONE;
-                }
+                return this.tags.ContainsKey("highway") ? (type)this.tags["highway"] : type.NONE;
+            }
+
+            public bool IsOneWay()
+            {
+                return this.tags.ContainsKey("oneway") ? (bool)this.tags["oneway"] : false;
+            }
+
+            public int GetMaxSpeed()
+            {
+                return this.tags.ContainsKey("maxspeed") ? (int)this.tags["maxspeed"] : (int)this.GetHighwayType();
+
+            }
+
+            public bool IsForward()
+            {
+                return this.tags.ContainsKey("forward") ? (bool)this.tags["forward"] : true;
             }
         }
     }
