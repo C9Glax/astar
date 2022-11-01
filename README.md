@@ -1,7 +1,7 @@
-# astar
+### astar
 Test of A* Algorithm
 
-#Project
+# Project
 
 - *astar* and *Graph* can be used as standalone (combined)
 - *OpenStreetMap Importer* Loads a .osm file (currently as ressource included). Requires *Graph*.

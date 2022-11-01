@@ -1,4 +1,7 @@
-﻿using Logging;
+﻿#pragma warning disable CS8600
+#pragma warning disable CS8602
+#pragma warning disable CS8604
+using Logging;
 using System.Xml;
 using Graph;
 
@@ -7,282 +10,341 @@ namespace OpenStreetMap_Importer
     public class Importer
     {
 
-        public static Dictionary<ulong, Node> Import(string filePath = "", Logger ?logger = null)
+        private static XmlReaderSettings readerSettings = new()
         {
-            List<Way> ways = new();
-            Dictionary<ulong, Node> nodes = new();
-            Stream mapData;
-            XmlReaderSettings readerSettings = new()
-            {
-                IgnoreWhitespace = true,
-                IgnoreComments = true
-            };
+            IgnoreWhitespace = true,
+            IgnoreComments = true
+        };
 
-            bool wayTag = false;
-            Way currentWay = new();
-            Dictionary<ulong, ushort> count = new();
+        public static Dictionary<ulong, Node> Import(string filePath = "", bool onlyJunctions = true, Logger? logger = null)
+        {
+            /*
+             * Count Node occurances when tag is "highway"
+             */
+            logger?.Log(LogLevel.INFO, "Counting Node-Occurances...");
+            Stream mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
+            Dictionary<ulong, ushort> occuranceCount = CountNodeOccurances(mapData, logger);
+            mapData.Close();
+            logger?.Log(LogLevel.DEBUG, "Way Nodes: {0}", occuranceCount.Count);
 
             /*
-             * First iteration
-             * Import "ways" with a tag "highway"
-             * Count occurances of "nodes" to find junctions
+             * Import Nodes and Edges
              */
-            
-            if (!File.Exists(filePath))
-            {
-                mapData = new MemoryStream(OSM_Data.map);
-                logger?.Log(LogLevel.INFO, "Filepath '{0}' does not exist. Using standard file.", filePath);
-            }
-            else
-            {
-                mapData = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                logger?.Log(LogLevel.INFO, "Using file '{0}'", filePath);
-            }
-            XmlReader reader = XmlReader.Create(mapData, readerSettings);
-            reader.MoveToContent();
+            logger?.Log(LogLevel.INFO, "Importing Graph...");
+            mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
+            Dictionary<ulong, Node> graph = CreateGraph(mapData, occuranceCount, onlyJunctions, logger);
+            mapData.Close();
+            occuranceCount.Clear();
+            GC.Collect();
+            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", graph.Count);
 
-            logger?.Log(LogLevel.INFO, "Importing ways and counting nodes...");
-            while (reader.Read())
+            return graph;
+        }
+
+        private static Dictionary<ulong, ushort> CountNodeOccurances(Stream mapData, Logger? logger = null)
+        {
+            Dictionary<ulong, ushort> _occurances = new();
+
+            XmlReader _reader = XmlReader.Create(mapData, readerSettings);
+            XmlReader _wayReader;
+            _reader.MoveToContent();
+
+            bool _isHighway;
+            List<ulong> _currentIds = new();
+
+            while (_reader.ReadToFollowing("way"))
             {
-                if (reader.Name == "way" && reader.IsStartElement())
+                _isHighway = false;
+                _currentIds.Clear();
+                _wayReader = _reader.ReadSubtree();
+                while (_wayReader.Read())
                 {
-                    logger?.Log(LogLevel.VERBOSE, "WAY {0} nodes {1}", currentWay.highway.ToString(), currentWay.nodeIds.Count);
-                    if (currentWay.highway != Way.highwayType.NONE)
+                    if (_reader.Name == "tag" && _reader.GetAttribute("k").Equals("highway"))
                     {
-                        ways.Add(currentWay);
-                        foreach (ulong id in currentWay.nodeIds)
-                            if(count.ContainsKey(id))
-                                count[id]++;
+                        try
+                        {
+                            if (!Enum.Parse(typeof(Way.type), _reader.GetAttribute("v"), true).Equals(Way.type.NONE))
+                                _isHighway = true;
+                        }
+                        catch (ArgumentException) { };
+                    }
+                    else if(_reader.Name == "nd")
+                    {
+                        try
+                        {
+                            _currentIds.Add(Convert.ToUInt64(_reader.GetAttribute("ref")));
+                        }
+                        catch (FormatException) { };
+                    }
+                }
+                if (_isHighway)
+                {
+                    foreach(ulong _id in _currentIds)
+                    {
+                        if (!_occurances.TryAdd(_id, 1))
+                            _occurances[_id]++;
+                    }
+                }
+                _wayReader.Close();
+            }
+            _reader.Close();
+            GC.Collect();
+
+            return _occurances;
+        }
+
+        private static Dictionary<ulong, Node> CreateGraph(Stream mapData, Dictionary<ulong, ushort> occuranceCount, bool onlyJunctions, Logger? logger = null)
+        {
+            Dictionary<ulong, Node> _tempAll = new();
+            Dictionary<ulong, Node> _graph = new();
+            Way _currentWay;
+            Node _n1, _n2, _currentNode;
+            float _weight, _distance = 0;
+
+            XmlReader _reader = XmlReader.Create(mapData, readerSettings);
+            XmlReader _wayReader;
+            _reader.MoveToContent();
+
+            while (_reader.Read())
+            {
+                if(_reader.Name == "node")
+                {
+                    ulong id = Convert.ToUInt64(_reader.GetAttribute("id"));
+                    if (occuranceCount.ContainsKey(id))
+                    {
+                        float lat = Convert.ToSingle(_reader.GetAttribute("lat").Replace('.', ','));
+                        float lon = Convert.ToSingle(_reader.GetAttribute("lon").Replace('.', ','));
+                        _tempAll.Add(id, new Node(lat, lon));
+                        logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, occuranceCount[id]);
+                    }
+                }
+                else if(_reader.Name == "way")
+                {
+                    _wayReader = _reader.ReadSubtree();
+                    _currentWay = new();
+                    while (_wayReader.Read())
+                    {
+                        _wayReader = _reader.ReadSubtree();
+                        _currentWay.AddTag("id", _reader.GetAttribute("id"));
+                        while (_wayReader.Read())
+                        {
+                            if (_reader.Name == "tag")
+                            {
+                                string _value = _reader.GetAttribute("v");
+                                string _key = _reader.GetAttribute("k");
+                                logger?.Log(LogLevel.VERBOSE, "TAG {0} {1}", _key, _value);
+                                _currentWay.AddTag(_key, _value);
+                            }
+                            else if (_reader.Name == "nd")
+                            {
+                                ulong _id = Convert.ToUInt64(_reader.GetAttribute("ref"));
+                                _currentWay.nodeIds.Add(_id);
+                                logger?.Log(LogLevel.VERBOSE, "nd: {0}", _id);
+                            }
+                        }
+                    }
+                    _wayReader.Close();
+
+                    if (!_currentWay.GetHighwayType().Equals(Way.type.NONE))
+                    {
+                        logger?.Log(LogLevel.VERBOSE, "WAY Nodes: {0} Type: {1}", _currentWay.nodeIds.Count, _currentWay.GetHighwayType());
+                        if (!onlyJunctions)
+                        {
+                            for (int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
+                            {
+                                _n1 = _tempAll[_currentWay.nodeIds[_nodeIdIndex]];
+                                _n2 = _tempAll[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _weight = Utils.DistanceBetweenNodes(_n1, _n2) * 1000 / _currentWay.GetMaxSpeed();
+                                if (!_currentWay.IsOneWay())
+                                {
+                                    _n1.edges.Add(new Edge(_n2, _weight));
+                                    _n2.edges.Add(new Edge(_n1, _weight));
+                                }
+                                else if (_currentWay.IsForward())
+                                {
+                                    _n1.edges.Add(new Edge(_n2, _weight));
+                                }
+                                else
+                                {
+                                    _n2.edges.Add(new Edge(_n1, _weight));
+                                }
+                            }
+                            _graph = _tempAll;
+                        }
+                        else
+                        {
+                            if (!_tempAll.TryGetValue(_currentWay.nodeIds[0], out _n1))
+                            {
+                                _n1 = _graph[_currentWay.nodeIds[0]];
+                            }
                             else
-                                count.TryAdd(id, 1);
-                    }
-                    wayTag = true;
-                    currentWay = new Way();
-                }
-                else if (reader.Name == "tag" && wayTag)
-                {
-#pragma warning disable CS8600 //tags will always have a value and key
-#pragma warning disable CS8604
-                    string value = reader.GetAttribute("v");
-                    string key = reader.GetAttribute("k");
-                    logger?.Log(LogLevel.VERBOSE, "TAG {0} {1}", key, value);
-#pragma warning restore CS8600
-                    switch (key)
-                    {
-                        case "highway":
-                            currentWay.SetHighwayType(value);
-                            break;
-                        case "oneway":
-                            switch (value)
                             {
-                                case "yes":
-                                    currentWay.oneway = true;
-                                    break;
-                               /*case "no":
-                                    currentWay.oneway = false;
-                                    break;*/
-                                case "-1":
-                                    currentWay.oneway = true;
-                                    currentWay.direction = Way.wayDirection.backward;
-                                    break;
+                                _graph.TryAdd(_currentWay.nodeIds[0], _n1);
+                                _tempAll.Remove(_currentWay.nodeIds[0]);
                             }
-                            break;
-                            /*case "name":
-                            
-                            break;*/
-                    }
-#pragma warning restore CS8604
-                }
-                else if(reader.Name == "nd" && wayTag)
-                {
-                    ulong id = Convert.ToUInt64(reader.GetAttribute("ref"));
-                    currentWay.nodeIds.Add(id);
-                    logger?.Log(LogLevel.VERBOSE, "nd: {0}", id);
-                }
-                else if(reader.Name == "node")
-                {
-                    wayTag = false;
-                }
-            }
-
-            logger?.Log(LogLevel.DEBUG, "Loaded Ways: {0} Required Nodes: {1}", ways.Count, count.Count);
-
-            reader.Close();
-            GC.Collect();
-            if (!File.Exists(filePath))
-            {
-                mapData = new MemoryStream(OSM_Data.map);
-                logger?.Log(LogLevel.INFO, "Filepath '{0}' does not exist. Using standard file.", filePath);
-            }
-            else
-            {
-                mapData = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                logger?.Log(LogLevel.INFO, "Using file '{0}'", filePath);
-            }
-            reader = XmlReader.Create(mapData, readerSettings);
-            reader.MoveToContent();
-
-            /*
-             * Second iteration
-             * Import nodes that are needed by the "ways"
-             */
-            logger?.Log(LogLevel.INFO, "Importing nodes...");
-            while (reader.Read())
-            {
-                if (reader.Name == "node")
-                {
-                    ulong id = Convert.ToUInt64(reader.GetAttribute("id"));
-                    if (count.ContainsKey(id))
-                    {
-#pragma warning disable CS8602 //node will always have a lat and lon
-                        float lat = Convert.ToSingle(reader.GetAttribute("lat").Replace('.', ','));
-                        float lon = Convert.ToSingle(reader.GetAttribute("lon").Replace('.', ','));
-#pragma warning restore CS8602
-                        nodes.TryAdd(id, new Node(lat, lon));
-                        logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, count[id]);
-                    }
-                }
-            }
-            /*
-             * Add connections between nodes (only junctions, e.g. nodes are referenced more than once)
-             * Remove non-junction nodes
-             */
-            logger?.Log(LogLevel.INFO, "Calculating Edges and distances...");
-            ulong edges = 0;
-            foreach(Way way in ways)
-            {
-                Node junction1 = nodes[way.nodeIds[0]];
-                Node junction2;
-                double weight = 0;
-                //Iterate Node-ids in current way forwards or backwards (depending on way.direction)
-                if (way.direction == Way.wayDirection.forward)
-                {
-                    for (int index = 0; index < way.nodeIds.Count - 1; index++)
-                    {
-                        Node currentNode = nodes[way.nodeIds[index]];
-                        Node nextNode = nodes[way.nodeIds[index + 1]];
-                        weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                        if (count[way.nodeIds[index + 1]] > 1 || index == way.nodeIds.Count - 2)
-                        {
-                            /*
-                             * If Node is referenced more than once => Junction
-                             * If Node is last node of way => Junction
-                             * Add an edge between two junctions
-                             */
-                            junction2 = nodes[way.nodeIds[index + 1]];
-                            junction1.edges.Add(new Edge(junction2, weight));
-                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index + 1]);
-                            edges++;
-
-                            if (!way.oneway)
+                            _currentNode = _n1;
+                            for(int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
                             {
-                                junction2.edges.Add(new Edge(junction1, weight));
-                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index + 1], weight, way.nodeIds[index]);
-                                edges++;
+                                if (!_tempAll.TryGetValue(_currentWay.nodeIds[_nodeIdIndex + 1], out _n2))
+                                    _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _distance += Utils.DistanceBetweenNodes(_currentNode, _n2);
+                                if (occuranceCount[_currentWay.nodeIds[_nodeIdIndex]] > 1 || _nodeIdIndex == _currentWay.nodeIds.Count - 2) //junction found
+                                {
+                                    _weight = _distance * 1000 / _currentWay.GetMaxSpeed();
+                                    _distance = 0;
+                                    _graph.TryAdd(_currentWay.nodeIds[_nodeIdIndex + 1], _n2);
+                                    if (!_currentWay.IsOneWay())
+                                    {
+                                        _n1.edges.Add(new Edge(_n2, _weight, _currentWay.GetId()));
+                                        _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
+                                    }
+                                    else if (_currentWay.IsForward())
+                                    {
+                                        _n1.edges.Add(new Edge(_n2, _weight, _currentWay.GetId()));
+                                    }
+                                    else
+                                    {
+                                        _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
+                                    }
+                                }
+                                else
+                                {
+                                    _tempAll.Remove(_currentWay.nodeIds[_nodeIdIndex]);
+                                }
+                                _currentNode = _n2;
                             }
-
-                            junction1 = junction2;
-                            weight = 0;
-                        }
-                    }
-                }
-                else
-                {
-                    for (int index = way.nodeIds.Count - 2; index > 0; index--)
-                    {
-                        Node currentNode = nodes[way.nodeIds[index]];
-                        Node nextNode = nodes[way.nodeIds[index - 1]];
-                        weight += Utils.DistanceBetweenNodes(currentNode, nextNode);
-                        if (count[way.nodeIds[index - 1]] > 1 || index == 1)
-                        {
-                            /*
-                             * If Node is referenced more than once => Junction
-                             * If Node is last node of way => Junction
-                             * Add an edge between two junctions
-                             */
-                            junction2 = nodes[way.nodeIds[index - 1]];
-                            junction1.edges.Add(new Edge(junction2, weight));
-                            logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index], weight, way.nodeIds[index - 1]);
-                            edges++;
-
-                            if (!way.oneway)
-                            {
-                                junction2.edges.Add(new Edge(junction1, weight));
-                                logger?.Log(LogLevel.VERBOSE, "EDGE {0} -- {1} --> {2}", way.nodeIds[index - 1], weight, way.nodeIds[index]);
-                                edges++;
-                            }
-
-                            junction1 = junction2;
-                            weight = 0;
                         }
                     }
                 }
             }
-            reader.Close();
+            _reader.Close();
             GC.Collect();
-
-            logger?.Log(LogLevel.DEBUG, "Loaded Edges: {0}", edges);
-            return nodes.Where(node => count[node.Key] > 1).ToDictionary(node => node.Key, node => node.Value);
+            return _graph;
         }
 
         internal struct Way
         {
             public List<ulong> nodeIds;
-            public bool oneway;
-            public wayDirection direction;
-            public highwayType highway;
-            public enum wayDirection { forward, backward }
-            public enum highwayType : uint
-            {
-                NONE = 1,
-                motorway = 130,
-                trunk = 125,
-                primary = 110,
-                secondary = 100,
-                tertiary = 80,
-                unclassified = 40,
-                residential = 23,
-                motorway_link = 55,
-                trunk_link = 50,
-                primary_link = 30,
-                secondary_link = 25,
-                tertiary_link = 24,
-                living_street = 20,
-                service = 14,
-                pedestrian = 12,
-                track = 6,
-                bus_guideway = 15,
-                escape = 3,
-                raceway = 4,
-                road = 28,
-                busway = 13,
-                footway = 8,
-                bridleway = 7,
-                steps = 5,
-                corridor = 9,
-                path = 10,
-                cycleway = 11,
-                construction = 2
-            }
+            private Dictionary<string, object> tags;
+
+
+            public Dictionary<type, int> speed = new() {
+                { type.NONE, 1 },
+                { type.motorway, 130 },
+                { type.trunk, 125 },
+                { type.primary, 110 },
+                { type.secondary, 100 },
+                { type.tertiary, 90 },
+                { type.unclassified, 40 },
+                { type.residential, 20 },
+                { type.motorway_link, 50 },
+                { type.trunk_link, 50 },
+                { type.primary_link, 30 },
+                { type.secondary_link, 25 },
+                { type.tertiary_link, 25 },
+                { type.living_street, 20 },
+                { type.service, 10 },
+                { type.pedestrian, 10 },
+                { type.track, 1 },
+                { type.bus_guideway, 5 },
+                { type.escape, 1 },
+                { type.raceway, 1 },
+                { type.road, 25 },
+                { type.busway, 5 },
+                { type.footway, 1 },
+                { type.bridleway, 1 },
+                { type.steps, 1 },
+                { type.corridor, 1 },
+                { type.path, 10 },
+                { type.cycleway, 5 },
+                { type.construction, 1 }
+            };
+            public enum type { NONE, motorway, trunk, primary, secondary, tertiary, unclassified, residential, motorway_link, trunk_link, primary_link, secondary_link, tertiary_link, living_street, service, pedestrian, track, bus_guideway, escape, raceway, road, busway, footway, bridleway, steps, corridor, path, cycleway, construction }
 
 
             public Way()
             {
                 this.nodeIds = new List<ulong>();
-                this.oneway = false;
-                this.direction = wayDirection.forward;
-                this.highway = highwayType.NONE;
+                this.tags = new();
+            }
+            public void AddTag(string key, string value, Logger? logger = null)
+            {
+                switch (key)
+                {
+                    case "highway":
+                        try
+                        {
+                            this.tags.Add(key, (type)Enum.Parse(typeof(type), value, true));
+                            if (this.GetMaxSpeed().Equals((int)type.NONE))
+                            {
+                                this.tags["maxspeed"] = (int)this.GetHighwayType();
+                            }
+                        }
+                        catch (ArgumentException)
+                        {
+                            this.tags.Add(key, type.NONE);
+                        }
+                        break;
+                    case "maxspeed":
+                        try
+                        {
+                            if (this.tags.ContainsKey("maxspeed"))
+                                this.tags["maxspeed"] = Convert.ToInt32(value);
+                            else
+                                this.tags.Add(key, Convert.ToInt32(value));
+                        }
+                        catch (FormatException)
+                        {
+                            this.tags.Add(key, (int)this.GetHighwayType());
+                        }
+                        break;
+                    case "oneway":
+                        switch (value)
+                        {
+                            case "yes":
+                                this.tags.Add(key, true);
+                                break;
+                            case "-1":
+                                this.tags.Add("forward", false);
+                                break;
+                            case "no":
+                                this.tags.Add(key, false);
+                                break;
+                        }
+                        break;
+                    case "id":
+                        this.tags.Add(key, Convert.ToUInt64(value));
+                        break;
+                    default:
+                        logger?.Log(LogLevel.VERBOSE, "Tag {0} - {1} was not added.", key, value);
+                        break;
+                }
             }
 
-            public void SetHighwayType(string waytype)
+            public ulong GetId()
             {
-                try
-                {
-                    this.highway = (highwayType)Enum.Parse(typeof(highwayType), waytype, true);
-                }catch(Exception)
-                {
-                    this.highway = highwayType.NONE;
-                }
+                return this.tags.ContainsKey("id") ? (ulong)this.tags["id"] : 0;
+            }
+
+            public type GetHighwayType()
+            {
+                return this.tags.ContainsKey("highway") ? (type)this.tags["highway"] : type.NONE;
+            }
+
+            public bool IsOneWay()
+            {
+                return this.tags.ContainsKey("oneway") ? (bool)this.tags["oneway"] : false;
+            }
+
+            public int GetMaxSpeed()
+            {
+                return this.tags.ContainsKey("maxspeed") ? (int)this.tags["maxspeed"] : (int)this.GetHighwayType();
+
+            }
+
+            public bool IsForward()
+            {
+                return this.tags.ContainsKey("forward") ? (bool)this.tags["forward"] : true;
             }
         }
     }

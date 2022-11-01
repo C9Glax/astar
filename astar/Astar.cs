@@ -7,26 +7,6 @@ namespace astar
     {
 
         /*
-         * Loads the graph, chooses two nodes at random and calls a*
-         */
-        public Astar(Dictionary<UInt64, Node> nodes, Logger ?logger = null)
-        {
-            Random r = new();
-            List<Node> path = new();
-            while(path.Count < 1)
-            {
-                Node n1 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
-                Node n2 = nodes[nodes.Keys.ElementAt(r.Next(0, nodes.Count - 1))];
-                logger?.Log(LogLevel.INFO, "From {0} - {1} to {2} - {3} Distance {4}", n1.lat, n1.lon, n2.lat, n2.lon, Utils.DistanceBetweenNodes(n1,n2));
-                path = FindPath(ref nodes, n1, n2, ref logger);
-            }
-
-            logger?.Log(LogLevel.INFO, "Path found");
-            foreach (Node n in path)
-                logger?.Log(LogLevel.INFO, "lat {0:000.00000} lon {1:000.00000} traveled {2:0000.00} / {3:0000.00} beeline {4:0000.00}", n.lat, n.lon, n.pathLength, path.ElementAt(path.Count-1).pathLength, n.goalDistance);
-        }
-
-        /*
          * Resets the calculated previous nodes and distance to goal
          */
         private static void Reset(ref Dictionary<ulong, Node> nodes)
@@ -34,77 +14,55 @@ namespace astar
             foreach(Node n in nodes.Values)
             {
                 n.previousNode = Node.nullnode;
-                n.goalDistance = double.MaxValue;
+                n.goalDistance = float.MaxValue;
+                n.pathLength = float.MaxValue;
             }
         }
 
         /*
          * 
          */
-        private static List<Node> FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, ref Logger? logger)
+        public static bool FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, out List<Node> path, Logger? logger)
         {
+            path = new List<Node>();
+            logger?.Log(LogLevel.INFO, "From {0} - {1} to {2} - {3} Distance {4}", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal));
             Reset(ref nodes);
             List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
             start.pathLength = 0;
             start.goalDistance = Utils.DistanceBetweenNodes(start, goal);
-            while (currentNode != goal && toVisit.Count > 0)
+            while (toVisit.Count > 0 && toVisit[0].pathLength < goal.pathLength)
             {
+                if(currentNode == goal)
+                {
+                    logger?.Log(LogLevel.INFO, "Way found, checking for shorter option.");
+                }
                 currentNode = toVisit.First();
-                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
+                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path-length: {1} goal-distance: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
-                    if (e.neighbor.goalDistance == double.MaxValue)
-                        e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
                     if (e.neighbor.pathLength > currentNode.pathLength + e.weight)
                     {
+                        e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
                         e.neighbor.pathLength = currentNode.pathLength + e.weight;
                         e.neighbor.previousNode = currentNode;
                         toVisit.Add(e.neighbor);
                     }
                 }
+
                 toVisit.Remove(currentNode); //"Mark" as visited
-                toVisit.Sort(CompareDistanceToGoal);
+                toVisit.Sort(CompareDistance);
             }
-
-            List<Node> path = new();
-
-            if (currentNode == goal)
+            if(goal.previousNode != Node.nullnode)
             {
-                if(toVisit[0].pathLength < goal.pathLength)
-                {
-                    logger?.Log(LogLevel.INFO, "Way found, checking for shorter option.");
-                    while (toVisit[0].pathLength < goal.pathLength)
-                    {
-                        currentNode = toVisit.First();
-                        logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path: {1} goal: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
-                        //Check all neighbors of current node
-                        foreach (Edge e in currentNode.edges)
-                        {
-                            if (e.neighbor.goalDistance == double.MaxValue)
-                                e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
-                            if (e.neighbor.pathLength > currentNode.pathLength + e.weight)
-                            {
-                                e.neighbor.pathLength = currentNode.pathLength + e.weight;
-                                e.neighbor.previousNode = currentNode;
-                                toVisit.Add(e.neighbor);
-                            }
-                        }
-                        toVisit.Remove(currentNode); //"Mark" as visited
-                        toVisit.Sort(CompareDistanceToGoal);
-                    }
-                }
-                else
-                {
-                    logger?.Log(LogLevel.INFO, "Way found, shortest option.");
-                }
+                logger?.Log(LogLevel.INFO, "Way found, shortest option.");
             }
             else
             {
                 logger?.Log(LogLevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
-                return path;
+                return false;
             }
 
             path.Add(goal);
@@ -114,13 +72,33 @@ namespace astar
                 currentNode = currentNode.previousNode;
             }
             path.Reverse();
-            return path;
+
+            logger?.Log(LogLevel.INFO, "Path found");
+            float distance = 0;
+            Node prev = Node.nullnode;
+            TimeSpan totalTime = TimeSpan.FromSeconds(path.ElementAt(path.Count - 1).pathLength);
+            
+            foreach (Node n in path)
+            {
+                if(!prev.Equals(Node.nullnode))
+                {
+                    distance += Utils.DistanceBetweenNodes(prev, n);
+                }
+                prev = n;
+                logger?.Log(LogLevel.DEBUG, "lat {0:000.00000} lon {1:000.00000} traveled {5:0000.00}km in {2:G} / {3:G} Great-Circle to Goal {4:0000.00}", n.lat, n.lon, TimeSpan.FromSeconds(n.pathLength), totalTime, n.goalDistance, distance);
+            }
+
+
+            return true;
         }
         
         /*
          * Compares two nodes and returns the node closer to the goal
+         * -1 => n1 smaller n2
+         *  0 => n1 equal n2
+         *  1 => n1 larger n2
          */
-        private static int CompareDistanceToGoal(Node n1, Node n2)
+        private static int CompareDistance(Node n1, Node n2)
         {
             if (n1 == null || n2 == null)
                 return 0;
@@ -129,6 +107,26 @@ namespace astar
                 if (n1.goalDistance < n2.goalDistance)
                     return -1;
                 else if (n1.goalDistance > n2.goalDistance)
+                    return 1;
+                else return 0;
+            }
+        }
+
+        /*
+         * Compares two nodes and returns the node with the shorter path
+         * -1 => n1 smaller n2
+         *  0 => n1 equal n2
+         *  1 => n1 larger n2
+         */
+        private static int ComparePathLength(Node n1, Node n2)
+        {
+            if (n1 == null || n2 == null)
+                return 0;
+            else
+            {
+                if (n1.pathLength < n2.pathLength)
+                    return -1;
+                else if (n1.pathLength > n2.pathLength)
                     return 1;
                 else return 0;
             }
