@@ -13,7 +13,7 @@ namespace astar
         {
             foreach(Node n in nodes.Values)
             {
-                n.previousNode = Node.nullnode;
+                n.previousNode = null;
                 n.goalDistance = float.MaxValue;
                 n.pathLength = float.MaxValue;
             }
@@ -55,7 +55,7 @@ namespace astar
                 toVisit.Remove(currentNode); //"Mark" as visited
                 toVisit.Sort(CompareDistance);
             }
-            if(goal.previousNode != Node.nullnode)
+            if(goal.previousNode != null)
             {
                 logger?.Log(LogLevel.INFO, "Way found, shortest option.");
             }
@@ -68,19 +68,22 @@ namespace astar
             path.Add(goal);
             while(currentNode != start)
             {
-                path.Add(currentNode.previousNode);
-                currentNode = currentNode.previousNode;
+                if(currentNode.previousNode != null)
+                {
+                    path.Add(currentNode.previousNode);
+                    currentNode = currentNode.previousNode;
+                }
             }
             path.Reverse();
 
             logger?.Log(LogLevel.INFO, "Path found");
             float distance = 0;
-            Node prev = Node.nullnode;
+            Node? prev = null;
             TimeSpan totalTime = TimeSpan.FromSeconds(path.ElementAt(path.Count - 1).pathLength);
             
             foreach (Node n in path)
             {
-                if(!prev.Equals(Node.nullnode))
+                if(prev != null)
                 {
                     distance += Utils.DistanceBetweenNodes(prev, n);
                 }

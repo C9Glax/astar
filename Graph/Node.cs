@@ -6,7 +6,7 @@
         public float lon { get; }
         public HashSet<Edge> edges { get; }
 
-        public Node previousNode { get; set; }
+        public Node? previousNode { get; set; }
         public float goalDistance { get; set; }
 
         public float pathLength { get; set; }
@@ -16,10 +16,9 @@
             this.lat = lat;
             this.lon = lon;
             this.edges = new();
-            this.previousNode = nullnode;
+            this.previousNode = null;
             this.goalDistance = float.MaxValue;
             this.pathLength = float.MaxValue;
         }
-        public static Node nullnode = new(float.NaN, float.NaN);
     }
 }
