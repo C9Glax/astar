@@ -9,7 +9,7 @@
         public Node? previousNode { get; set; }
         public float goalDistance { get; set; }
 
-        public float pathLength { get; set; }
+        public float timeSpent { get; set; }
 
         public Node(float lat, float lon)
         {
@@ -18,7 +18,7 @@
             this.edges = new();
             this.previousNode = null;
             this.goalDistance = float.MaxValue;
-            this.pathLength = float.MaxValue;
+            this.timeSpent = float.MaxValue;
         }
     }
 }

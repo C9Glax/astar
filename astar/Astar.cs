@@ -15,7 +15,7 @@ namespace astar
             {
                 n.previousNode = null;
                 n.goalDistance = float.MaxValue;
-                n.pathLength = float.MaxValue;
+                n.timeSpent = float.MaxValue;
             }
         }
 
@@ -30,23 +30,23 @@ namespace astar
             List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
-            start.pathLength = 0;
+            start.timeSpent = 0;
             start.goalDistance = Utils.DistanceBetweenNodes(start, goal);
-            while (toVisit.Count > 0 && toVisit[0].pathLength < goal.pathLength)
+            while (toVisit.Count > 0 && toVisit[0].timeSpent < goal.timeSpent)
             {
                 if(currentNode == goal)
                 {
                     logger?.Log(LogLevel.INFO, "Way found, checking for shorter option.");
                 }
                 currentNode = toVisit.First();
-                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path-length: {1} goal-distance: {2}", toVisit.Count, currentNode.pathLength, currentNode.goalDistance);
+                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path-length: {1} goal-distance: {2}", toVisit.Count, currentNode.timeSpent, currentNode.goalDistance);
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
-                    if (e.neighbor.pathLength > currentNode.pathLength + e.weight)
+                    if (e.neighbor.timeSpent > currentNode.timeSpent + e.weight)
                     {
                         e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
-                        e.neighbor.pathLength = currentNode.pathLength + e.weight;
+                        e.neighbor.timeSpent = currentNode.timeSpent + e.weight;
                         e.neighbor.previousNode = currentNode;
                         toVisit.Add(e.neighbor);
                     }
@@ -79,7 +79,7 @@ namespace astar
             logger?.Log(LogLevel.INFO, "Path found");
             float distance = 0;
             Node? prev = null;
-            TimeSpan totalTime = TimeSpan.FromSeconds(path.ElementAt(path.Count - 1).pathLength);
+            TimeSpan totalTime = TimeSpan.FromSeconds(path.ElementAt(path.Count - 1).timeSpent);
             
             foreach (Node n in path)
             {
@@ -88,7 +88,7 @@ namespace astar
                     distance += Utils.DistanceBetweenNodes(prev, n);
                 }
                 prev = n;
-                logger?.Log(LogLevel.DEBUG, "lat {0:000.00000} lon {1:000.00000} traveled {5:0000.00}km in {2:G} / {3:G} Great-Circle to Goal {4:0000.00}", n.lat, n.lon, TimeSpan.FromSeconds(n.pathLength), totalTime, n.goalDistance, distance);
+                logger?.Log(LogLevel.DEBUG, "lat {0:000.00000} lon {1:000.00000} traveled {5:0000.00}km in {2:G} / {3:G} Great-Circle to Goal {4:0000.00}", n.lat, n.lon, TimeSpan.FromSeconds(n.timeSpent), totalTime, n.goalDistance, distance);
             }
 
 
@@ -127,9 +127,9 @@ namespace astar
                 return 0;
             else
             {
-                if (n1.pathLength < n2.pathLength)
+                if (n1.timeSpent < n2.timeSpent)
                     return -1;
-                else if (n1.pathLength > n2.pathLength)
+                else if (n1.timeSpent > n2.timeSpent)
                     return 1;
                 else return 0;
             }
