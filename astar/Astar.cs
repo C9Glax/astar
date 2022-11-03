@@ -15,38 +15,36 @@ namespace astar
             {
                 n.previousNode = null;
                 n.goalDistance = float.MaxValue;
-                n.timeSpent = float.MaxValue;
+                n.timeRequired = float.MaxValue;
             }
         }
 
-        /*
-         * 
-         */
-        public static bool FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, out List<Node> path, Logger? logger)
+
+        public static Route FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, Logger? logger)
         {
-            path = new List<Node>();
-            logger?.Log(LogLevel.INFO, "From {0} - {1} to {2} - {3} Distance {4}", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal));
+            Route _route = new Route();
+            logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4}", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal));
             Reset(ref nodes);
             List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
-            start.timeSpent = 0;
+            start.timeRequired = 0;
             start.goalDistance = Utils.DistanceBetweenNodes(start, goal);
-            while (toVisit.Count > 0 && toVisit[0].timeSpent < goal.timeSpent)
+            while (toVisit.Count > 0 && toVisit[0].timeRequired < goal.timeRequired)
             {
                 if(currentNode == goal)
                 {
                     logger?.Log(LogLevel.INFO, "Way found, checking for shorter option.");
                 }
                 currentNode = toVisit.First();
-                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path-length: {1} goal-distance: {2}", toVisit.Count, currentNode.timeSpent, currentNode.goalDistance);
+                logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path-length: {1} goal-distance: {2}", toVisit.Count, currentNode.timeRequired, currentNode.goalDistance);
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
-                    if (e.neighbor.timeSpent > currentNode.timeSpent + e.weight)
+                    if (e.neighbor.timeRequired > currentNode.timeRequired + e.time)
                     {
                         e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
-                        e.neighbor.timeSpent = currentNode.timeSpent + e.weight;
+                        e.neighbor.timeRequired = currentNode.timeRequired + e.time;
                         e.neighbor.previousNode = currentNode;
                         toVisit.Add(e.neighbor);
                     }
@@ -58,41 +56,51 @@ namespace astar
             if(goal.previousNode != null)
             {
                 logger?.Log(LogLevel.INFO, "Way found, shortest option.");
+                currentNode = goal;
+                _route.routeFound = true;
+                _route.time = goal.timeRequired;
             }
             else
             {
-                logger?.Log(LogLevel.INFO, "No path between {0} - {1} and {2} - {3}", start.lat, start.lon, goal.lat, goal.lon);
-                return false;
+                logger?.Log(LogLevel.INFO, "No path between {0:000.00000}#{1:000.00000} and {2:000.00000}#{3:000.00000}", start.lat, start.lon, goal.lat, goal.lon);
+                _route.routeFound = false;
+                return _route;
             }
 
-            path.Add(goal);
+            List<Node> tempNodes = new();
+            tempNodes.Add(goal);
             while(currentNode != start)
             {
-                if(currentNode.previousNode != null)
-                {
-                    path.Add(currentNode.previousNode);
-                    currentNode = currentNode.previousNode;
-                }
+                tempNodes.Add(currentNode.previousNode);
+                currentNode = currentNode.previousNode;
             }
-            path.Reverse();
+            tempNodes.Reverse();
+            for(int i = 0; i < tempNodes.Count - 1; i++)
+            {
+                Edge e = tempNodes[i].GetEdgeToNode(tempNodes[i + 1]);
+                _route.AddStep(tempNodes[i], e);
+                _route.distance += e.distance;
+            }
 
             logger?.Log(LogLevel.INFO, "Path found");
-            float distance = 0;
-            Node? prev = null;
-            TimeSpan totalTime = TimeSpan.FromSeconds(path.ElementAt(path.Count - 1).timeSpent);
-            
-            foreach (Node n in path)
+
+            if(logger?.level > LogLevel.INFO)
             {
-                if(prev != null)
+
+                float time = 0;
+                float distance = 0;
+
+                logger?.Log(LogLevel.DEBUG, "Route Distance: {0} Time: {1}", _route.distance, TimeSpan.FromSeconds(_route.time));
+                for(int i = 0; i < _route.steps.Count; i++)
                 {
-                    distance += Utils.DistanceBetweenNodes(prev, n);
+                    Step s = _route.steps[i];
+                    time += s.edge.time;
+                    distance += s.edge.distance;
+                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} along {5}\tafter {6} and {7} m", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.id, TimeSpan.FromSeconds(s.start.timeRequired), distance);
                 }
-                prev = n;
-                logger?.Log(LogLevel.DEBUG, "lat {0:000.00000} lon {1:000.00000} traveled {5:0000.00}km in {2:G} / {3:G} Great-Circle to Goal {4:0000.00}", n.lat, n.lon, TimeSpan.FromSeconds(n.timeSpent), totalTime, n.goalDistance, distance);
             }
 
-
-            return true;
+            return _route;
         }
         
         /*
@@ -127,12 +135,14 @@ namespace astar
                 return 0;
             else
             {
-                if (n1.timeSpent < n2.timeSpent)
+                if (n1.timeRequired < n2.timeRequired)
                     return -1;
-                else if (n1.timeSpent > n2.timeSpent)
+                else if (n1.timeRequired > n2.timeRequired)
                     return 1;
                 else return 0;
             }
         }
+
+
     }
 }
