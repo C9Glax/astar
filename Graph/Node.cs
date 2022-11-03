@@ -9,7 +9,7 @@
         public Node? previousNode { get; set; }
         public float goalDistance { get; set; }
 
-        public float timeSpent { get; set; }
+        public float timeRequired { get; set; }
 
         public Node(float lat, float lon)
         {
@@ -18,7 +18,15 @@
             this.edges = new();
             this.previousNode = null;
             this.goalDistance = float.MaxValue;
-            this.timeSpent = float.MaxValue;
+            this.timeRequired = float.MaxValue;
+        }
+
+        public Edge GetEdgeToNode(Node n)
+        {
+            foreach (Edge e in this.edges)
+                if (e.neighbor == n)
+                    return e;
+            return null;
         }
     }
 }
