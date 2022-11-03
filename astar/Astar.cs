@@ -23,7 +23,7 @@ namespace astar
         public static Route FindPath(ref Dictionary<ulong, Node> nodes, Node start, Node goal, Logger? logger)
         {
             Route _route = new Route();
-            logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4}", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal));
+            logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4:00000.00}km", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal)/1000);
             Reset(ref nodes);
             List<Node> toVisit = new();
             toVisit.Add(start);
@@ -71,14 +71,18 @@ namespace astar
             tempNodes.Add(goal);
             while(currentNode != start)
             {
+#pragma warning disable CS8604 // Route was found, so has to have a previous node
                 tempNodes.Add(currentNode.previousNode);
+#pragma warning restore CS8604
                 currentNode = currentNode.previousNode;
             }
             tempNodes.Reverse();
             for(int i = 0; i < tempNodes.Count - 1; i++)
             {
+#pragma warning disable CS8600, CS8604 // Route was found, so has to have an edge
                 Edge e = tempNodes[i].GetEdgeToNode(tempNodes[i + 1]);
                 _route.AddStep(tempNodes[i], e);
+#pragma warning restore CS8600, CS8604
                 _route.distance += e.distance;
             }
 
@@ -90,13 +94,13 @@ namespace astar
                 float time = 0;
                 float distance = 0;
 
-                logger?.Log(LogLevel.DEBUG, "Route Distance: {0} Time: {1}", _route.distance, TimeSpan.FromSeconds(_route.time));
+                logger?.Log(LogLevel.DEBUG, "Route Distance: {0:00000.00km} Time: {1}", _route.distance/1000, TimeSpan.FromSeconds(_route.time));
                 for(int i = 0; i < _route.steps.Count; i++)
                 {
                     Step s = _route.steps[i];
                     time += s.edge.time;
                     distance += s.edge.distance;
-                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} along {5}\tafter {6} and {7} m", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.id, TimeSpan.FromSeconds(s.start.timeRequired), distance);
+                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} along {5:0000000000} after {6} and {7:0000.00}km", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.id, TimeSpan.FromSeconds(s.start.timeRequired), distance/1000);
                 }
             }
 

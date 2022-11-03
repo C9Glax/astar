@@ -21,7 +21,7 @@
             this.timeRequired = float.MaxValue;
         }
 
-        public Edge GetEdgeToNode(Node n)
+        public Edge? GetEdgeToNode(Node n)
         {
             foreach (Edge e in this.edges)
                 if (e.neighbor == n)
