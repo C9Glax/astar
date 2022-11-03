@@ -21,22 +21,23 @@ namespace OpenStreetMap_Importer
             /*
              * Count Node occurances when tag is "highway"
              */
-            logger?.Log(LogLevel.INFO, "Counting Node-Occurances...");
+            logger?.Log(LogLevel.DEBUG, "Opening File...");
             Stream mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
+            logger?.Log(LogLevel.INFO, "Counting Node-Occurances...");
             Dictionary<ulong, ushort> occuranceCount = CountNodeOccurances(mapData, logger);
-            mapData.Close();
             logger?.Log(LogLevel.DEBUG, "Way Nodes: {0}", occuranceCount.Count);
 
             /*
              * Import Nodes and Edges
              */
+            mapData.Position = 0;
             logger?.Log(LogLevel.INFO, "Importing Graph...");
-            mapData = File.Exists(filePath) ? new FileStream(filePath, FileMode.Open, FileAccess.Read) : new MemoryStream(OSM_Data.map);
             Dictionary<ulong, Node> graph = CreateGraph(mapData, occuranceCount, onlyJunctions, logger);
+            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", graph.Count);
+
             mapData.Close();
             occuranceCount.Clear();
             GC.Collect();
-            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", graph.Count);
 
             return graph;
         }
@@ -57,6 +58,7 @@ namespace OpenStreetMap_Importer
                 _isHighway = false;
                 _currentIds.Clear();
                 _wayReader = _reader.ReadSubtree();
+                logger?.Log(LogLevel.VERBOSE, "WAY: {0}", _reader.GetAttribute("id"));
                 while (_wayReader.Read())
                 {
                     if (_reader.Name == "tag" && _reader.GetAttribute("k").Equals("highway"))
@@ -65,6 +67,7 @@ namespace OpenStreetMap_Importer
                         {
                             if (!Enum.Parse(typeof(Way.type), _reader.GetAttribute("v"), true).Equals(Way.type.NONE))
                                 _isHighway = true;
+                            logger?.Log(LogLevel.VERBOSE, "Highway: {0}", _reader.GetAttribute("v"));
                         }
                         catch (ArgumentException) { };
                     }
@@ -73,6 +76,7 @@ namespace OpenStreetMap_Importer
                         try
                         {
                             _currentIds.Add(Convert.ToUInt64(_reader.GetAttribute("ref")));
+                            logger?.Log(LogLevel.VERBOSE, "node-ref: {0}", _reader.GetAttribute("ref"));
                         }
                         catch (FormatException) { };
                     }
@@ -122,6 +126,7 @@ namespace OpenStreetMap_Importer
                 {
                     _wayReader = _reader.ReadSubtree();
                     _currentWay = new();
+                    logger?.Log(LogLevel.VERBOSE, "WAY: {0}", _reader.GetAttribute("id"));
                     while (_wayReader.Read())
                     {
                         _wayReader = _reader.ReadSubtree();
@@ -139,7 +144,7 @@ namespace OpenStreetMap_Importer
                             {
                                 ulong _id = Convert.ToUInt64(_reader.GetAttribute("ref"));
                                 _currentWay.nodeIds.Add(_id);
-                                logger?.Log(LogLevel.VERBOSE, "nd: {0}", _id);
+                                logger?.Log(LogLevel.VERBOSE, "node-ref: {0}", _id);
                             }
                         }
                     }
@@ -147,7 +152,7 @@ namespace OpenStreetMap_Importer
 
                     if (!_currentWay.GetHighwayType().Equals(Way.type.NONE))
                     {
-                        logger?.Log(LogLevel.VERBOSE, "WAY Nodes: {0} Type: {1}", _currentWay.nodeIds.Count, _currentWay.GetHighwayType());
+                        logger?.Log(LogLevel.VERBOSE, "WAY Nodes-count: {0} Type: {1}", _currentWay.nodeIds.Count, _currentWay.GetHighwayType());
                         if (!onlyJunctions)
                         {
                             for (int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
@@ -168,6 +173,7 @@ namespace OpenStreetMap_Importer
                                 {
                                     _n2.edges.Add(new Edge(_n1, _weight));
                                 }
+                                logger?.Log(LogLevel.VERBOSE, "Add Edge: {0} & {1} Weight: {2}", _currentWay.nodeIds[_nodeIdIndex], _currentWay.nodeIds[_nodeIdIndex + 1], _weight);
                             }
                             _graph = _tempAll;
                         }
@@ -206,6 +212,7 @@ namespace OpenStreetMap_Importer
                                     {
                                         _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
                                     }
+                                    logger?.Log(LogLevel.VERBOSE, "Add Edge: {0} & {1} Weight: {2}", _currentWay.nodeIds[_nodeIdIndex], _currentWay.nodeIds[_nodeIdIndex + 1], _weight);
                                 }
                                 else
                                 {
