@@ -102,7 +102,7 @@ namespace OpenStreetMap_Importer
             Dictionary<ulong, Node> _graph = new();
             Way _currentWay;
             Node _n1, _n2, _currentNode;
-            float _weight, _distance = 0;
+            float _time, _distance = 0;
 
             XmlReader _reader = XmlReader.Create(mapData, readerSettings);
             XmlReader _wayReader;
@@ -158,21 +158,23 @@ namespace OpenStreetMap_Importer
                             {
                                 _n1 = _graph[_currentWay.nodeIds[_nodeIdIndex]];
                                 _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
-                                _weight = Utils.DistanceBetweenNodes(_n1, _n2) * 1000 / _currentWay.GetMaxSpeed();
+
+                                _distance = Utils.DistanceBetweenNodes(_n1, _n2);
+                                _time = _distance / _currentWay.GetMaxSpeed();
                                 if (!_currentWay.IsOneWay())
                                 {
-                                    _n1.edges.Add(new Edge(_n2, _weight));
-                                    _n2.edges.Add(new Edge(_n1, _weight));
+                                    _n1.edges.Add(new Edge(_n2, _time, _distance, _currentWay.GetId()));
+                                    _n2.edges.Add(new Edge(_n1, _time, _distance, _currentWay.GetId()));
                                 }
                                 else if (_currentWay.IsForward())
                                 {
-                                    _n1.edges.Add(new Edge(_n2, _weight));
+                                    _n1.edges.Add(new Edge(_n2, _time, _distance, _currentWay.GetId()));
                                 }
                                 else
                                 {
-                                    _n2.edges.Add(new Edge(_n1, _weight));
+                                    _n2.edges.Add(new Edge(_n1, _time, _distance, _currentWay.GetId()));
                                 }
-                                logger?.Log(LogLevel.VERBOSE, "Add Edge: {0} & {1} Weight: {2}", _currentWay.nodeIds[_nodeIdIndex], _currentWay.nodeIds[_nodeIdIndex + 1], _weight);
+                                logger?.Log(LogLevel.VERBOSE, "Add Edge: {0} & {1} Weight: {2}", _currentWay.nodeIds[_nodeIdIndex], _currentWay.nodeIds[_nodeIdIndex + 1], _time);
                             }
                         }
                         else
@@ -185,23 +187,22 @@ namespace OpenStreetMap_Importer
                                 _distance += Utils.DistanceBetweenNodes(_currentNode, _n2);
                                 if (occuranceCount[_currentWay.nodeIds[_nodeIdIndex]] > 1 || _nodeIdIndex == _currentWay.nodeIds.Count - 2) //junction found
                                 {
-                                    _weight = _distance * 1000 / _currentWay.GetMaxSpeed();
-                                    _distance = 0;
-                                    _graph.TryAdd(_currentWay.nodeIds[_nodeIdIndex + 1], _n2);
+                                    _time = _distance / _currentWay.GetMaxSpeed();
                                     if (!_currentWay.IsOneWay())
                                     {
-                                        _n1.edges.Add(new Edge(_n2, _weight, _currentWay.GetId()));
-                                        _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
+                                        _n1.edges.Add(new Edge(_n2, _time, _distance, _currentWay.GetId()));
+                                        _n2.edges.Add(new Edge(_n1, _time, _distance, _currentWay.GetId()));
                                     }
                                     else if (_currentWay.IsForward())
                                     {
-                                        _n1.edges.Add(new Edge(_n2, _weight, _currentWay.GetId()));
+                                        _n1.edges.Add(new Edge(_n2, _time, _distance, _currentWay.GetId()));
                                     }
                                     else
                                     {
-                                        _n2.edges.Add(new Edge(_n1, _weight, _currentWay.GetId()));
+                                        _n2.edges.Add(new Edge(_n1, _time, _distance, _currentWay.GetId()));
                                     }
-                                    logger?.Log(LogLevel.VERBOSE, "Add Edge: {0} & {1} Weight: {2}", _currentWay.nodeIds[_nodeIdIndex], _currentWay.nodeIds[_nodeIdIndex + 1], _weight);
+                                    _distance = 0;
+                                    logger?.Log(LogLevel.VERBOSE, "Add Edge: {0} & {1} Weight: {2}", _currentWay.nodeIds[_nodeIdIndex], _currentWay.nodeIds[_nodeIdIndex + 1], _time);
                                 }
                                 else
                                 {
