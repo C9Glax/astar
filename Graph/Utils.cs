@@ -9,7 +9,7 @@
 
         public static float DistanceBetweenCoordinates(float lat1, float lon1, float lat2, float lon2)
         {
-            const int earthRadius = 6371;
+            const int earthRadius = 6371000;
             double differenceLat = DegreesToRadians(lat2 - lat1);
             double differenceLon = DegreesToRadians(lon2 - lon1);
 
