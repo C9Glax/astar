@@ -3,7 +3,7 @@ namespace Graph
 {
     public class Graph
     {
-        public List<Node> nodes { get; }
+        private List<Node> nodes { get; }
 
         public Graph()
         {
@@ -21,6 +21,16 @@ namespace Graph
             {
                 return false;
             }
+        }
+
+        public Node GetNodeAtIndex(int i)
+        {
+            return this.nodes[i];
+        }
+
+        public int GetNodeCount()
+        {
+            return this.nodes.Count;
         }
 
         public Node? GetNode(ulong id)

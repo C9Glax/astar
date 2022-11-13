@@ -34,7 +34,7 @@ namespace OpenStreetMap_Importer
             mapData.Position = 0;
             logger?.Log(LogLevel.INFO, "Importing Graph...");
             Graph.Graph _graph = CreateGraph(mapData, occuranceCount, onlyJunctions, logger);
-            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", _graph.nodes.Count);
+            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", _graph.GetNodeCount());
 
             mapData.Close();
             occuranceCount.Clear();
