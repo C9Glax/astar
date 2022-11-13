@@ -1,6 +1,5 @@
-﻿namespace Graph
+﻿namespace Graph.Utils
 {
-
     public struct Utils
     {
         public static double DistanceBetweenNodes(Node n1, Node n2)
