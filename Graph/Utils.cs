@@ -1,15 +1,15 @@
-﻿namespace Graph{
-
+﻿namespace Graph.Utils
+{
     public struct Utils
     {
-        public static float DistanceBetweenNodes(Node n1, Node n2)
+        public static double DistanceBetweenNodes(Node n1, Node n2)
         {
             return DistanceBetweenCoordinates(n1.lat, n1.lon, n2.lat, n2.lon);
         }
 
-        public static float DistanceBetweenCoordinates(float lat1, float lon1, float lat2, float lon2)
+        public static double DistanceBetweenCoordinates(float lat1, float lon1, float lat2, float lon2)
         {
-            const int earthRadius = 6371;
+            const int earthRadius = 6371000;
             double differenceLat = DegreesToRadians(lat2 - lat1);
             double differenceLon = DegreesToRadians(lon2 - lon1);
 
@@ -19,7 +19,7 @@
             double a = Math.Sin(differenceLat / 2) * Math.Sin(differenceLat / 2) + Math.Sin(differenceLon / 2) * Math.Sin(differenceLon / 2) * Math.Cos(lat1Rads) * Math.Cos(lat2Rads);
             double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
 
-            return Convert.ToSingle(earthRadius * c);
+            return earthRadius * c;
         }
 
         private static double DegreesToRadians(double deg)
