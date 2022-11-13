@@ -3,29 +3,21 @@ namespace Graph
 {
     public class Graph
     {
-        private List<Node> nodes { get; }
+        private Dictionary<ulong, Node> nodes { get; }
 
         public Graph()
         {
             this.nodes = new();
         }
 
-        public bool AddNode(Node n)
+        public bool AddNode(ulong id, Node n)
         {
-            if (!this.ContainsNode(n.id))
-            {
-                this.nodes.Add(n);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return this.nodes.TryAdd(id, n);
         }
 
-        public Node GetNodeAtIndex(int i)
+        public Node NodeAtIndex(int i)
         {
-            return this.nodes[i];
+            return this.nodes.Values.ToArray()[i];
         }
 
         public int GetNodeCount()
@@ -35,44 +27,30 @@ namespace Graph
 
         public Node? GetNode(ulong id)
         {
-            foreach(Node n in this.nodes)
-            {
-                if (n.id == id)
-                    return n;
-            }
-            return null;
+            if (this.nodes.TryGetValue(id, out Node? n))
+                return n;
+            else
+                return null;
         }
 
         public bool ContainsNode(ulong id)
         {
-            return this.GetNode(id) != null;
+            return this.nodes.ContainsKey(id);
+        }
+
+        public bool ContainsNode(Node n)
+        {
+            return this.nodes.Values.Contains(n);
         }
 
         public bool RemoveNode(ulong id)
         {
-            Node? n = this.GetNode(id);
-            if(n != null)
-            {
-                this.nodes.Remove(n);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return this.nodes.Remove(id);
         }
 
         public bool RemoveNode(Node n)
         {
-            if (this.RemoveNode(n.id))
-            {
-                this.nodes.Remove(n);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            throw new NotImplementedException();
         }
 
         public Node ClosestNodeToCoordinates(float lat, float lon)

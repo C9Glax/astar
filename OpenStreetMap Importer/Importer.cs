@@ -118,7 +118,7 @@ namespace OpenStreetMap_Importer
                     {
                         float lat = Convert.ToSingle(_reader.GetAttribute("lat").Replace('.', ','));
                         float lon = Convert.ToSingle(_reader.GetAttribute("lon").Replace('.', ','));
-                        _graph.AddNode(new Node(id, lat, lon));
+                        _graph.AddNode(id, new Node(lat, lon));
                         logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, occuranceCount[id]);
                     }
                 }
