@@ -1,5 +1,5 @@
 ### astar
-Test of A* Algorithm
+Test of A* Algorithm on real-world road data
 
 # Linked Repos
 - [Logging](https://github.com/C9Glax/Logging)
