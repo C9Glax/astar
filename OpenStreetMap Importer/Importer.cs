@@ -159,7 +159,7 @@ namespace OpenStreetMap_Importer
                                 _n1 = _graph[_currentWay.nodeIds[_nodeIdIndex]];
                                 _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
 
-                                _distance = Utils.DistanceBetweenNodes(_n1, _n2);
+                                _distance = Convert.ToSingle(Utils.DistanceBetweenNodes(_n1, _n2));
                                 _time = _distance / _currentWay.GetMaxSpeed();
                                 if (!_currentWay.IsOneWay())
                                 {
@@ -184,7 +184,7 @@ namespace OpenStreetMap_Importer
                             for(int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
                             {
                                 _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
-                                _distance += Utils.DistanceBetweenNodes(_currentNode, _n2);
+                                _distance += Convert.ToSingle(Utils.DistanceBetweenNodes(_currentNode, _n2));
                                 if (occuranceCount[_currentWay.nodeIds[_nodeIdIndex]] > 1 || _nodeIdIndex == _currentWay.nodeIds.Count - 2) //junction found
                                 {
                                     _time = _distance / _currentWay.GetMaxSpeed();

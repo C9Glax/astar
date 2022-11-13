@@ -29,7 +29,7 @@ namespace astar
             toVisit.Add(start);
             Node currentNode = start;
             start.timeRequired = 0;
-            start.goalDistance = Utils.DistanceBetweenNodes(start, goal);
+            start.goalDistance = Convert.ToSingle(Utils.DistanceBetweenNodes(start, goal));
             while (toVisit.Count > 0 && toVisit[0].timeRequired < goal.timeRequired)
             {
                 if(currentNode == goal)
@@ -43,7 +43,7 @@ namespace astar
                 {
                     if (e.neighbor.timeRequired > currentNode.timeRequired + e.time)
                     {
-                        e.neighbor.goalDistance = Utils.DistanceBetweenNodes(e.neighbor, goal);
+                        e.neighbor.goalDistance = Convert.ToSingle(Utils.DistanceBetweenNodes(e.neighbor, goal));
                         e.neighbor.timeRequired = currentNode.timeRequired + e.time;
                         e.neighbor.previousNode = currentNode;
                         toVisit.Add(e.neighbor);
