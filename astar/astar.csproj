@@ -7,10 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Graph\Graph.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <Reference Include="Geo-Graph">
+      <HintPath>C:\Users\glax\source\repos\Geo-Graph\Geo-Graph\bin\Debug\net6.0\Geo-Graph.dll</HintPath>
+    </Reference>
     <Reference Include="Logging">
       <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
     </Reference>
