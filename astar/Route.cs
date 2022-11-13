@@ -4,19 +4,17 @@ namespace astar
     public class Route
     {
         public List<Step> steps { get; }
-        public bool routeFound { get; set; }
-        public float distance { get; set; }
-        public float time { get; set; }
+        public bool routeFound { get; }
+        public float distance { get; }
+        public float time { get; }
 
-        public Route()
-        {
-            this.steps = new();
-            this.distance = 0;
-        }
 
-        public void AddStep(Node start, Edge way)
+        public Route(List<Step> steps, bool routeFound, float distance, float timeRequired)
         {
-            this.steps.Add(new Step(start, way));
+            this.steps = steps;
+            this.routeFound = routeFound;
+            this.distance = distance;
+            this.time = timeRequired;
         }
     }
 
@@ -24,10 +22,15 @@ namespace astar
     {
         public Node start { get; }
         public Edge edge { get; }
-        public Step(Node start, Edge route)
+
+        public float timeRequired { get; }
+        public float goalDistance { get; }
+        public Step(Node start, Edge route, float timeRequired, float goalDistance)
         {
             this.start = start;
             this.edge = route;
+            this.timeRequired = timeRequired;
+            this.goalDistance = goalDistance;
         }
     }
 }

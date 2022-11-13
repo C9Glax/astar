@@ -4,6 +4,7 @@
 using Logging;
 using System.Xml;
 using Graph;
+using Graph.Utils;
 
 namespace OpenStreetMap_Importer
 {
@@ -16,7 +17,7 @@ namespace OpenStreetMap_Importer
             IgnoreComments = true
         };
 
-        public static Dictionary<ulong, Node> Import(string filePath = "", bool onlyJunctions = true, Logger? logger = null)
+        public static Graph.Graph Import(string filePath = "", bool onlyJunctions = true, Logger? logger = null)
         {
             /*
              * Count Node occurances when tag is "highway"
@@ -32,14 +33,14 @@ namespace OpenStreetMap_Importer
              */
             mapData.Position = 0;
             logger?.Log(LogLevel.INFO, "Importing Graph...");
-            Dictionary<ulong, Node> graph = CreateGraph(mapData, occuranceCount, onlyJunctions, logger);
-            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", graph.Count);
+            Graph.Graph _graph = CreateGraph(mapData, occuranceCount, onlyJunctions, logger);
+            logger?.Log(LogLevel.DEBUG, "Loaded Nodes: {0}", _graph.nodes.Count);
 
             mapData.Close();
             occuranceCount.Clear();
             GC.Collect();
 
-            return graph;
+            return _graph;
         }
 
         private static Dictionary<ulong, ushort> CountNodeOccurances(Stream mapData, Logger? logger = null)
@@ -97,9 +98,9 @@ namespace OpenStreetMap_Importer
             return _occurances;
         }
 
-        private static Dictionary<ulong, Node> CreateGraph(Stream mapData, Dictionary<ulong, ushort> occuranceCount, bool onlyJunctions, Logger? logger = null)
+        private static Graph.Graph CreateGraph(Stream mapData, Dictionary<ulong, ushort> occuranceCount, bool onlyJunctions, Logger? logger = null)
         {
-            Dictionary<ulong, Node> _graph = new();
+            Graph.Graph _graph = new();
             Way _currentWay;
             Node _n1, _n2, _currentNode;
             float _time, _distance = 0;
@@ -117,7 +118,7 @@ namespace OpenStreetMap_Importer
                     {
                         float lat = Convert.ToSingle(_reader.GetAttribute("lat").Replace('.', ','));
                         float lon = Convert.ToSingle(_reader.GetAttribute("lon").Replace('.', ','));
-                        _graph.Add(id, new Node(lat, lon));
+                        _graph.AddNode(new Node(id, lat, lon));
                         logger?.Log(LogLevel.VERBOSE, "NODE {0} {1} {2} {3}", id, lat, lon, occuranceCount[id]);
                     }
                 }
@@ -156,8 +157,8 @@ namespace OpenStreetMap_Importer
                         {
                             for (int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
                             {
-                                _n1 = _graph[_currentWay.nodeIds[_nodeIdIndex]];
-                                _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _n1 = _graph.GetNode(_currentWay.nodeIds[_nodeIdIndex]);
+                                _n2 = _graph.GetNode(_currentWay.nodeIds[_nodeIdIndex + 1]);
 
                                 _distance = Convert.ToSingle(Utils.DistanceBetweenNodes(_n1, _n2));
                                 _time = _distance / _currentWay.GetMaxSpeed();
@@ -179,11 +180,11 @@ namespace OpenStreetMap_Importer
                         }
                         else
                         {
-                            _n1 = _graph[_currentWay.nodeIds[0]];
+                            _n1 = _graph.GetNode(_currentWay.nodeIds[0]);
                             _currentNode = _n1;
                             for(int _nodeIdIndex = 0; _nodeIdIndex < _currentWay.nodeIds.Count - 1; _nodeIdIndex++)
                             {
-                                _n2 = _graph[_currentWay.nodeIds[_nodeIdIndex + 1]];
+                                _n2 = _graph.GetNode(_currentWay.nodeIds[_nodeIdIndex + 1]);
                                 _distance += Convert.ToSingle(Utils.DistanceBetweenNodes(_currentNode, _n2));
                                 if (occuranceCount[_currentWay.nodeIds[_nodeIdIndex]] > 1 || _nodeIdIndex == _currentWay.nodeIds.Count - 2) //junction found
                                 {
@@ -206,7 +207,7 @@ namespace OpenStreetMap_Importer
                                 }
                                 else
                                 {
-                                    _graph.Remove(_currentWay.nodeIds[_nodeIdIndex]); //Not a junction
+                                    _graph.RemoveNode(_currentWay.nodeIds[_nodeIdIndex]); //Not a junction
                                 }
                                 _currentNode = _n2;
                             }
