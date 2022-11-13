@@ -6,9 +6,9 @@ namespace astar
 {
     public class Astar
     {
-        Dictionary<Node, float> timeRequired = new();
-        Dictionary<Node, float> goalDistance = new();
-        Dictionary<Node, Node> previousNode = new();
+        private Dictionary<Node, float> timeRequired = new();
+        private Dictionary<Node, float> goalDistance = new();
+        private Dictionary<Node, Node> previousNode = new();
 
         public Route FindPath(Graph.Graph graph, Node start, Node goal, Logger? logger)
         {
@@ -16,9 +16,9 @@ namespace astar
             List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
-            timeRequired.Add(start, 0);
-            goalDistance.Add(start, Convert.ToSingle(Utils.DistanceBetweenNodes(start, goal)));
-            while (toVisit.Count > 0 && timeRequired[toVisit[0]] < timeRequired[goal])
+            SetTimeRequiredToReach(start, 0);
+            SetDistanceToGoal(start, Convert.ToSingle(Utils.DistanceBetweenNodes(start, goal)));
+            while (toVisit.Count > 0 && GetTimeRequiredToReach(toVisit[0]) < GetTimeRequiredToReach(goal))
             {
                 if(currentNode == goal)
                 {
@@ -29,11 +29,11 @@ namespace astar
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
-                    if (timeRequired[e.neighbor] > timeRequired[currentNode] + e.time)
+                    if (GetTimeRequiredToReach(e.neighbor) > GetTimeRequiredToReach(currentNode) + e.time)
                     {
-                        goalDistance[e.neighbor] = Convert.ToSingle(Utils.DistanceBetweenNodes(e.neighbor, goal));
-                        timeRequired[e.neighbor] = timeRequired[currentNode] + e.time;
-                        previousNode[e.neighbor] = currentNode;
+                        SetDistanceToGoal(e.neighbor, Convert.ToSingle(Utils.DistanceBetweenNodes(e.neighbor, goal)));
+                        SetTimeRequiredToReach(e.neighbor, GetTimeRequiredToReach(currentNode) + e.time);
+                        SetPreviousNodeOf(e.neighbor, currentNode);
                         toVisit.Add(e.neighbor);
                     }
                 }
@@ -42,7 +42,7 @@ namespace astar
                 toVisit.Sort(CompareDistance);
             }
 
-            if(previousNode[goal] != null)
+            if(GetPreviousNodeOf(goal) != null)
             {
                 logger?.Log(LogLevel.INFO, "Way found, shortest option.");
                 currentNode = goal;
@@ -57,10 +57,10 @@ namespace astar
             tempNodes.Add(goal);
             while(currentNode != start)
             {
-#pragma warning disable CS8604 // Route was found, so has to have a previous node
-                tempNodes.Add(previousNode[currentNode]);
-#pragma warning restore CS8604
-                currentNode = previousNode[currentNode];
+#pragma warning disable CS8604, CS8600 // Route was found, so has to have a previous node
+                tempNodes.Add(GetPreviousNodeOf(currentNode));
+                currentNode = GetPreviousNodeOf(currentNode);
+#pragma warning restore CS8604, CS8600
             }
             tempNodes.Reverse();
 
@@ -71,12 +71,12 @@ namespace astar
             {
 #pragma warning disable CS8600, CS8604 // Route was found, so has to have an edge
                 Edge e = tempNodes[i].GetEdgeToNode(tempNodes[i + 1]);
-                steps.Add(new Step(tempNodes[i], e, timeRequired[tempNodes[i]], goalDistance[tempNodes[i]]));
+                steps.Add(new Step(tempNodes[i], e, GetTimeRequiredToReach(tempNodes[i]), GetDistanceToGoal(tempNodes[i])));
 #pragma warning restore CS8600, CS8604
                 totalDistance += e.distance;
             }
 
-            Route _route = new Route(steps, true, totalDistance, timeRequired[goal]);
+            Route _route = new Route(steps, true, totalDistance, GetTimeRequiredToReach(goal));
 
             logger?.Log(LogLevel.INFO, "Path found");
 
@@ -111,9 +111,9 @@ namespace astar
                 return 0;
             else
             {
-                if (goalDistance[n1] < goalDistance[n2])
+                if (GetDistanceToGoal(n1) < GetDistanceToGoal(n2))
                     return -1;
-                else if (goalDistance[n1] > goalDistance[n2])
+                else if (GetDistanceToGoal(n1) > GetDistanceToGoal(n2))
                     return 1;
                 else return 0;
             }
@@ -131,14 +131,66 @@ namespace astar
                 return 0;
             else
             {
-                if (timeRequired[n1] < timeRequired[n2])
+                if (GetTimeRequiredToReach(n1) < GetTimeRequiredToReach(n2))
                     return -1;
-                else if (timeRequired[n1] > timeRequired[n2])
+                else if (GetTimeRequiredToReach(n1) > GetTimeRequiredToReach(n2))
                     return 1;
                 else return 0;
             }
         }
 
 
+        private float GetTimeRequiredToReach(Node n)
+        {
+            if (timeRequired.TryGetValue(n, out float t))
+            {
+                return t;
+            }
+            else
+            {
+                return float.MaxValue;
+            }
+        }
+
+        private void SetTimeRequiredToReach(Node n, float t)
+        {
+            if (!timeRequired.TryAdd(n, t))
+                timeRequired[n] = t;
+        }
+
+        private float GetDistanceToGoal(Node n)
+        {
+            if (goalDistance.TryGetValue(n, out float t))
+            {
+                return t;
+            }
+            else
+            {
+                return float.MaxValue;
+            }
+        }
+
+        private void SetDistanceToGoal(Node n, float d)
+        {
+            if (!goalDistance.TryAdd(n, d))
+                goalDistance[n] = d;
+        }
+
+        private Node? GetPreviousNodeOf(Node n)
+        {
+            if(previousNode.TryGetValue(n, out Node? t))
+            {
+                return t;
+            }else
+            {
+                return null;
+            }
+        }
+
+        private void SetPreviousNodeOf(Node n, Node p)
+        {
+            if (!previousNode.TryAdd(n, p))
+                previousNode[n] = p;
+        }
     }
 }
