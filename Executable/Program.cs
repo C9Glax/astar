@@ -17,4 +17,5 @@ do
         n2 = graph[graph.Keys.ElementAt(r.Next(0, graph.Count - 1))];
         _route = Astar.FindPath(ref graph, n1, n2, logger);
     } while (!_route.routeFound);
+    logger.Log(LogLevel.INFO, "Press Enter to find new path.");
 } while (Console.ReadKey().Key.Equals(ConsoleKey.Enter));
