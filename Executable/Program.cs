@@ -3,9 +3,47 @@ using Logging;
 using astar;
 using OSM_XML_Importer;
 
-Logger logger = new (LogType.CONSOLE, LogLevel.DEBUG);
-Graph.Graph graph = Importer.Import(@"C:\Users\glax\Downloads\oberbayern-latest.osm", true, logger);
-logger.level = LogLevel.DEBUG;
+string[] confirmation = { "yes", "1", "true" };
+
+Logger logger = new(LogType.CONSOLE, LogLevel.DEBUG);
+string xmlPath;
+bool onlyJunctions;
+switch (args.Length)
+{
+    case 0:
+        xmlPath = @"";
+        onlyJunctions = true;
+        break;
+    case 1:
+        xmlPath = args[0];
+        onlyJunctions = true;
+        if (!File.Exists(xmlPath))
+        {
+            logger.Log(LogLevel.ERROR, "File {0} does not exist.", xmlPath);
+            return;
+        }
+        break;
+    case 2:
+        xmlPath = args[0];
+        if (!File.Exists(xmlPath))
+        {
+            logger.Log(LogLevel.ERROR, "File {0} does not exist.", xmlPath);
+            return;
+        }
+        if (confirmation.Contains(args[1].ToLower()))
+            onlyJunctions = true;
+        else
+            onlyJunctions = false;
+        break;
+    default:
+        logger.Log(LogLevel.ERROR, "Invalid Arguments.");
+        logger.Log(LogLevel.INFO, "Arguments can be:");
+        logger.Log(LogLevel.INFO, "arg0 Path to file: string");
+        logger.Log(LogLevel.INFO, "arg1 onlyJunctions: 'yes', '1', 'true'");
+        return;
+}
+
+Graph.Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
 
 Random r = new();
 Route _route;
