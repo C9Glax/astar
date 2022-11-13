@@ -1,9 +1,10 @@
 ﻿using Graph;
 using Logging;
 using astar;
+using OSM_XML_Importer;
 
 Logger logger = new (LogType.CONSOLE, LogLevel.DEBUG);
-Graph.Graph graph = OpenStreetMap_Importer.Importer.Import(@"C:\Users\glax\Downloads\oberbayern-latest.osm", true, logger);
+Graph.Graph graph = Importer.Import(@"C:\Users\glax\Downloads\oberbayern-latest.osm", true, logger);
 logger.level = LogLevel.DEBUG;
 
 Random r = new();

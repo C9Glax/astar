@@ -1,11 +1,8 @@
 ### astar
 Test of A* Algorithm
 
-# Project
+# Linked Repos
 
-- *astar* and *Graph* can be used as standalone (combined)
-- *OpenStreetMap Importer* Loads a .osm file (currently as ressource included). Requires *Graph*.
-- *Executable* ties everything together for testing
+- [OSM-XML-Importer](https://github.com/C9Glax/OSM-XML-Importer)
+- [Geo-Graph](https://github.com/C9Glax/Geo-Graph)
 
-[OpenStreetMap](https://www.openstreetmap.org/) data included.
-![grafik](https://user-images.githubusercontent.com/13404778/167040930-1a216ecb-c36d-4a19-8afc-310c06d2784e.png)

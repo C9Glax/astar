@@ -7,10 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "astar", "astar.csproj", "{4
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Executable", "..\Executable\Executable.csproj", "{9B311732-9631-480D-97A3-54823CC27CC8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenStreetMap Importer", "..\OpenStreetMap Importer\OpenStreetMap Importer.csproj", "{1E918E64-866F-4386-AA44-AF7120A9294F}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Graph", "..\Graph\Graph.csproj", "{F8B3B881-73FB-4266-9475-9845067AB5F3}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,14 +21,6 @@ Global
 		{9B311732-9631-480D-97A3-54823CC27CC8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B311732-9631-480D-97A3-54823CC27CC8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B311732-9631-480D-97A3-54823CC27CC8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1E918E64-866F-4386-AA44-AF7120A9294F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1E918E64-866F-4386-AA44-AF7120A9294F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1E918E64-866F-4386-AA44-AF7120A9294F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1E918E64-866F-4386-AA44-AF7120A9294F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F8B3B881-73FB-4266-9475-9845067AB5F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F8B3B881-73FB-4266-9475-9845067AB5F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F8B3B881-73FB-4266-9475-9845067AB5F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F8B3B881-73FB-4266-9475-9845067AB5F3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -9,13 +9,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\astar\astar.csproj" />
-    <ProjectReference Include="..\Graph\Graph.csproj" />
-    <ProjectReference Include="..\OpenStreetMap Importer\OpenStreetMap Importer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Geo-Graph">
+      <HintPath>C:\Users\glax\source\repos\Geo-Graph\Geo-Graph\bin\Debug\net6.0\Geo-Graph.dll</HintPath>
+    </Reference>
     <Reference Include="Logging">
       <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="OSM-XML-Importer">
+      <HintPath>C:\Users\glax\source\repos\OSM-XML-Importer\OSM-XML-Importer\bin\Debug\net6.0\OSM-XML-Importer.dll</HintPath>
     </Reference>
   </ItemGroup>
 
