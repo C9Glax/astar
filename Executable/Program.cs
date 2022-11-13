@@ -19,16 +19,16 @@ switch (args.Length)
         onlyJunctions = true;
         if (!File.Exists(xmlPath))
         {
-            logger.Log(LogLevel.ERROR, "File {0} does not exist.", xmlPath);
-            return;
+            logger.Log(LogLevel.INFO, "File {0} does not exist.", xmlPath);
+            throw new FileNotFoundException(xmlPath);
         }
         break;
     case 2:
         xmlPath = args[0];
         if (!File.Exists(xmlPath))
         {
-            logger.Log(LogLevel.ERROR, "File {0} does not exist.", xmlPath);
-            return;
+            logger.Log(LogLevel.INFO, "File {0} does not exist.", xmlPath);
+            throw new FileNotFoundException(xmlPath);
         }
         if (confirmation.Contains(args[1].ToLower()))
             onlyJunctions = true;
@@ -36,7 +36,7 @@ switch (args.Length)
             onlyJunctions = false;
         break;
     default:
-        logger.Log(LogLevel.ERROR, "Invalid Arguments.");
+        logger.Log(LogLevel.INFO, "Invalid Arguments.");
         logger.Log(LogLevel.INFO, "Arguments can be:");
         logger.Log(LogLevel.INFO, "arg0 Path to file: string");
         logger.Log(LogLevel.INFO, "arg1 onlyJunctions: 'yes', '1', 'true'");
