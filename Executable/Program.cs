@@ -2,6 +2,7 @@
 using Logging;
 using astar;
 using OSM_XML_Importer;
+using OSM_Landmarks;
 
 string[] confirmation = { "yes", "1", "true" };
 
@@ -43,18 +44,88 @@ switch (args.Length)
         return;
 }
 
-Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
+Graph graph = OSM_XML_Importer.Importer.Import(xmlPath, onlyJunctions, logger);
+Landmarks l = OSM_Landmarks.Importer.Import(xmlPath, logger);
 
 Random r = new();
 Route _route;
 Node n1, n2;
 do
 {
-    do
+    logger.Log(LogLevel.INFO, "Everything loaded.");
+    logger.Log(LogLevel.INFO, "Press ESC to quit.");
+    logger.Log(LogLevel.INFO, "Press R for path-calculation between 2 random Nodes.");
+    logger.Log(LogLevel.INFO, "Press C for path-calculation between 2 input coordinates.");
+    logger.Log(LogLevel.INFO, "Press A for path-calculation between 2 addresses.");
+    logger.Log(LogLevel.INFO, "Press L to List all addresses.");
+
+    ConsoleKey mode = Console.ReadKey().Key;
+    switch (mode)
     {
-        n1 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-        n2 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-        _route = new Astar().FindPath(graph, n1, n2, logger);
-    } while (!_route.routeFound);
-    logger.Log(LogLevel.INFO, "Press any Key to continue. Press ESC to quit.");
-} while (!Console.ReadKey().Key.Equals(ConsoleKey.Escape));
+        case ConsoleKey.Escape:
+            return;
+        case ConsoleKey.R:
+            do
+            {
+                n1 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
+                n2 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
+                _route = new Astar().FindPath(graph, n1, n2, logger);
+            } while (!_route.routeFound);
+            break;
+        case ConsoleKey.C:
+            logger.Log(LogLevel.INFO, "Enter Coordinates for Node 1:");
+            float lat1 = Convert.ToSingle(Console.ReadLine());
+            float lon1 = Convert.ToSingle(Console.ReadLine());
+            logger.Log(LogLevel.INFO, "Enter Coordinates for Node 2:");
+            float lat2 = Convert.ToSingle(Console.ReadLine());
+            float lon2 = Convert.ToSingle(Console.ReadLine());
+            n1 = graph.ClosestNodeToCoordinates(lat1, lon1);
+            n2 = graph.ClosestNodeToCoordinates(lat2, lon2);
+            _route = new Astar().FindPath(graph, n1, n2, logger);
+            break;
+        case ConsoleKey.A:
+            logger.Log(LogLevel.INFO, "Enter Address 1:");
+            List<Address> a1list = l.GetAddressesForQuery(Console.ReadLine());
+            logger.Log(LogLevel.INFO, "Select Address 1:");
+            for (int i = 0; i < a1list.Count; i++)
+            {
+                logger.Log(LogLevel.INFO, "{0}: {1}", i, a1list[i].ToString());
+            }
+            Address a1 = a1list[Convert.ToInt32(Console.ReadLine())];
+
+            logger.Log(LogLevel.INFO, "Enter Address 2:");
+            List<Address> a2list = l.GetAddressesForQuery(Console.ReadLine());
+            logger.Log(LogLevel.INFO, "Select Address 2:");
+            for (int i = 0; i < a2list.Count; i++)
+            {
+                logger.Log(LogLevel.INFO, "{0}: {1}", i, a2list[i].ToString());
+            }
+            Address a2 = a1list[Convert.ToInt32(Console.ReadLine())];
+
+            if (graph.ContainsNode(a1.locationId))
+            {
+                n1 = graph.GetNode(a1.locationId);
+            }
+            else
+            {
+                n1 = graph.ClosestNodeToCoordinates(a1.lat, a1.lon);
+            }
+
+            if (graph.ContainsNode(a2.locationId))
+            {
+                n2 = graph.GetNode(a2.locationId);
+            }
+            else
+            {
+                n2 = graph.ClosestNodeToCoordinates(a2.lat, a2.lon);
+            }
+
+
+            _route = new Astar().FindPath(graph, n1, n2, logger);
+            break;
+        case ConsoleKey.L:
+            foreach (Address a in l.addresses)
+                logger.Log(LogLevel.INFO, a.ToString());
+            break;
+    }
+} while (true);

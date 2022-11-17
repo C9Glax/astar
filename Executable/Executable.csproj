@@ -18,6 +18,9 @@
     <Reference Include="Logging">
       <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
     </Reference>
+    <Reference Include="OSM-Landmarks">
+      <HintPath>C:\Users\glax\source\repos\OSM-Landmarks\OSM-Landmarks\bin\Debug\net6.0\OSM-Landmarks.dll</HintPath>
+    </Reference>
     <Reference Include="OSM-XML-Importer">
       <HintPath>C:\Users\glax\source\repos\OSM-XML-Importer\OSM-XML-Importer\bin\Debug\net6.0\OSM-XML-Importer.dll</HintPath>
     </Reference>
