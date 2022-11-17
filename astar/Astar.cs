@@ -1,6 +1,6 @@
 ﻿using Logging;
-using Graph;
-using Graph.Utils;
+using GeoGraph;
+using GeoGraph.Utils;
 
 namespace astar
 {
@@ -10,7 +10,7 @@ namespace astar
         private Dictionary<Node, float> goalDistance = new();
         private Dictionary<Node, Node> previousNode = new();
 
-        public Route FindPath(Graph.Graph graph, Node start, Node goal, Logger? logger)
+        public Route FindPath(Graph graph, Node start, Node goal, Logger? logger)
         {
             logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4:00000.00}km", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal)/1000);
             List<Node> toVisit = new();

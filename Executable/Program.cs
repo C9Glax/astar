@@ -1,4 +1,4 @@
-﻿using Graph;
+﻿using GeoGraph;
 using Logging;
 using astar;
 using OSM_XML_Importer;
@@ -43,7 +43,7 @@ switch (args.Length)
         return;
 }
 
-Graph.Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
+Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
 
 Random r = new();
 Route _route;

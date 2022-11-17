@@ -1,4 +1,4 @@
-﻿using Graph;
+﻿using GeoGraph;
 namespace astar
 {
     public class Route
