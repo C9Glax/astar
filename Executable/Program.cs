@@ -49,7 +49,6 @@ logger.Log(LogLevel.INFO, "Loading Landmarks");
 Landmarks landmarks = OSM_Landmarks.Importer.Import(xmlPath, logger);
 logger.Log(LogLevel.INFO, "Everything loaded.");
 
-Random r = new();
 Route _route;
 Node? n1, n2;
 do
@@ -78,9 +77,11 @@ do
         case ConsoleKey.R:
             do
             {
-                n1 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-                n2 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-                logger.Log(LogLevel.INFO, "\n");
+                Dictionary<ulong, Node> temp = graph.GetRandomNodes(2);
+                n1 = temp.Values.ToArray()[0];
+                n2 = temp.Values.ToArray()[1];
+                Console.WriteLine();
+                Console.WriteLine();
                 _route = new Astar().FindPath(n1, n2, logger);
             } while (!_route.routeFound);
             break;
@@ -104,6 +105,16 @@ do
                 logger.Log(LogLevel.INFO, "{0}: {1}", i, a1list[i].ToString());
             }
             Address a1 = a1list[Convert.ToInt32(Console.ReadLine())];
+            if (graph.ContainsNode(a1.locationId))
+            {
+                logger.Log(LogLevel.INFO, "Address already in graph");
+                n1 = graph.GetNode(a1.locationId);
+            }
+            else
+            {
+                n1 = graph.ClosestNodeToCoordinates(a1.lat, a1.lon);
+                logger.Log(LogLevel.INFO, "Closest Node\n{0}", n1);
+            }
 
             logger.Log(LogLevel.INFO, "Enter Address 2:");
             List<Address> a2list = landmarks.GetAddressesForQuery(Console.ReadLine());
@@ -114,22 +125,16 @@ do
             }
             Address a2 = a2list[Convert.ToInt32(Console.ReadLine())];
 
-            if (graph.ContainsNode(a1.locationId))
-            {
-                n1 = graph.GetNode(a1.locationId);
-            }
-            else
-            {
-                n1 = graph.ClosestNodeToCoordinates(a1.lat, a1.lon);
-            }
 
             if (graph.ContainsNode(a2.locationId))
             {
+                logger.Log(LogLevel.INFO, "Address already in graph");
                 n2 = graph.GetNode(a2.locationId);
             }
             else
             {
                 n2 = graph.ClosestNodeToCoordinates(a2.lat, a2.lon);
+                logger.Log(LogLevel.INFO, "Closest Node\n{0}", n2);
             }
 
 

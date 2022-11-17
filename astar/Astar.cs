@@ -45,7 +45,7 @@ namespace astar
             }
             else
             {
-                logger?.Log(LogLevel.INFO, "No path between\n{0}\nand\n{1}", start, goal);
+                logger?.Log(LogLevel.INFO, "No path.", start, goal);
                 return new Route(new List<Step>(), false, float.MaxValue, float.MaxValue);
             }
 
