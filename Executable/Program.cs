@@ -43,33 +43,45 @@ switch (args.Length)
         logger.Log(LogLevel.INFO, "arg1 onlyJunctions: 'yes', '1', 'true'");
         return;
 }
-
+logger.Log(LogLevel.INFO, "Loading Graph");
 Graph graph = OSM_XML_Importer.Importer.Import(xmlPath, onlyJunctions, logger);
-Landmarks l = OSM_Landmarks.Importer.Import(xmlPath, logger);
+logger.Log(LogLevel.INFO, "Loading Landmarks");
+Landmarks landmarks = OSM_Landmarks.Importer.Import(xmlPath, logger);
+logger.Log(LogLevel.INFO, "Everything loaded.");
 
 Random r = new();
 Route _route;
-Node n1, n2;
+Node? n1, n2;
 do
 {
-    logger.Log(LogLevel.INFO, "Everything loaded.");
     logger.Log(LogLevel.INFO, "Press ESC to quit.");
     logger.Log(LogLevel.INFO, "Press R for path-calculation between 2 random Nodes.");
     logger.Log(LogLevel.INFO, "Press C for path-calculation between 2 input coordinates.");
     logger.Log(LogLevel.INFO, "Press A for path-calculation between 2 addresses.");
     logger.Log(LogLevel.INFO, "Press L to List all addresses.");
+    logger.Log(LogLevel.INFO, "Press N to get Information to Node-Id.");
 
     ConsoleKey mode = Console.ReadKey().Key;
     switch (mode)
     {
         case ConsoleKey.Escape:
             return;
+        case ConsoleKey.N:
+            logger.Log(LogLevel.INFO, "Enter Node-ID:");
+            ulong id = Convert.ToUInt64(Console.ReadLine());
+            n1 = graph.GetNode(id);
+            if(n1 != null)
+            {
+                logger.Log(LogLevel.INFO, "{0}: {1}", id, n1.ToString());
+            }
+            break;
         case ConsoleKey.R:
             do
             {
                 n1 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
                 n2 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-                _route = new Astar().FindPath(graph, n1, n2, logger);
+                logger.Log(LogLevel.INFO, "\n");
+                _route = new Astar().FindPath(n1, n2, logger);
             } while (!_route.routeFound);
             break;
         case ConsoleKey.C:
@@ -81,11 +93,11 @@ do
             float lon2 = Convert.ToSingle(Console.ReadLine());
             n1 = graph.ClosestNodeToCoordinates(lat1, lon1);
             n2 = graph.ClosestNodeToCoordinates(lat2, lon2);
-            _route = new Astar().FindPath(graph, n1, n2, logger);
+            _route = new Astar().FindPath(n1, n2, logger);
             break;
         case ConsoleKey.A:
             logger.Log(LogLevel.INFO, "Enter Address 1:");
-            List<Address> a1list = l.GetAddressesForQuery(Console.ReadLine());
+            List<Address> a1list = landmarks.GetAddressesForQuery(Console.ReadLine());
             logger.Log(LogLevel.INFO, "Select Address 1:");
             for (int i = 0; i < a1list.Count; i++)
             {
@@ -94,13 +106,13 @@ do
             Address a1 = a1list[Convert.ToInt32(Console.ReadLine())];
 
             logger.Log(LogLevel.INFO, "Enter Address 2:");
-            List<Address> a2list = l.GetAddressesForQuery(Console.ReadLine());
+            List<Address> a2list = landmarks.GetAddressesForQuery(Console.ReadLine());
             logger.Log(LogLevel.INFO, "Select Address 2:");
             for (int i = 0; i < a2list.Count; i++)
             {
                 logger.Log(LogLevel.INFO, "{0}: {1}", i, a2list[i].ToString());
             }
-            Address a2 = a1list[Convert.ToInt32(Console.ReadLine())];
+            Address a2 = a2list[Convert.ToInt32(Console.ReadLine())];
 
             if (graph.ContainsNode(a1.locationId))
             {
@@ -121,11 +133,15 @@ do
             }
 
 
-            _route = new Astar().FindPath(graph, n1, n2, logger);
+            _route = new Astar().FindPath(n1, n2, logger);
             break;
         case ConsoleKey.L:
-            foreach (Address a in l.addresses)
+            foreach (Address a in landmarks.addresses)
                 logger.Log(LogLevel.INFO, a.ToString());
+            break;
+
+        default:
+            Console.Clear();
             break;
     }
 } while (true);

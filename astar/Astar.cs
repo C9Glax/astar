@@ -9,9 +9,9 @@ namespace astar
         private Dictionary<Node, float> goalDistance = new();
         private Dictionary<Node, Node> previousNode = new();
 
-        public Route FindPath(Graph graph, Node start, Node goal, Logger? logger)
+        public Route FindPath(Node start, Node goal, Logger? logger)
         {
-            logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4:00000.00}km", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetween(start, goal)/1000);
+            logger?.Log(LogLevel.INFO, "From\n{0}\nto\n{1}\nGreat-Circle {2:00000.00}km", start, goal, Utils.DistanceBetween(start, goal) / 1000);
             List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
@@ -45,7 +45,7 @@ namespace astar
             }
             else
             {
-                logger?.Log(LogLevel.INFO, "No path between {0:000.00000}#{1:000.00000} and {2:000.00000}#{3:000.00000}", start.lat, start.lon, goal.lat, goal.lon);
+                logger?.Log(LogLevel.INFO, "No path between\n{0}\nand\n{1}", start, goal);
                 return new Route(new List<Step>(), false, float.MaxValue, float.MaxValue);
             }
 
