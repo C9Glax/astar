@@ -1,6 +1,5 @@
 ﻿using Logging;
 using GeoGraph;
-using GeoGraph.Utils;
 
 namespace astar
 {
@@ -12,12 +11,12 @@ namespace astar
 
         public Route FindPath(Graph graph, Node start, Node goal, Logger? logger)
         {
-            logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4:00000.00}km", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetweenNodes(start, goal)/1000);
+            logger?.Log(LogLevel.INFO, "From {0:000.00000}#{1:000.00000} to {2:000.00000}#{3:000.00000} Great-Circle {4:00000.00}km", start.lat, start.lon, goal.lat, goal.lon, Utils.DistanceBetween(start, goal)/1000);
             List<Node> toVisit = new();
             toVisit.Add(start);
             Node currentNode = start;
             SetTimeRequiredToReach(start, 0);
-            SetDistanceToGoal(start, Convert.ToSingle(Utils.DistanceBetweenNodes(start, goal)));
+            SetDistanceToGoal(start, Convert.ToSingle(Utils.DistanceBetween(start, goal)));
             while (toVisit.Count > 0 && GetTimeRequiredToReach(toVisit[0]) < GetTimeRequiredToReach(goal))
             {
                 currentNode = toVisit.First();
@@ -27,7 +26,7 @@ namespace astar
                 {
                     if (GetTimeRequiredToReach(e.neighbor) > GetTimeRequiredToReach(currentNode) + e.time)
                     {
-                        SetDistanceToGoal(e.neighbor, Convert.ToSingle(Utils.DistanceBetweenNodes(e.neighbor, goal)));
+                        SetDistanceToGoal(e.neighbor, Convert.ToSingle(Utils.DistanceBetween(e.neighbor, goal)));
                         SetTimeRequiredToReach(e.neighbor, GetTimeRequiredToReach(currentNode) + e.time);
                         SetPreviousNodeOf(e.neighbor, currentNode);
                         if (!toVisit.Contains(e.neighbor))
