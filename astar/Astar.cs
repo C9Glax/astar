@@ -50,14 +50,13 @@ namespace astar
                 return new Route(new List<Step>(), false, float.MaxValue, float.MaxValue);
             }
 
+#pragma warning disable CS8604, CS8600 // Route was found, so has to have a previous node and edges
             List<Node> tempNodes = new();
             tempNodes.Add(goal);
             while(currentNode != start)
             {
-#pragma warning disable CS8604, CS8600 // Route was found, so has to have a previous node
                 tempNodes.Add(GetPreviousNodeOf(currentNode));
                 currentNode = GetPreviousNodeOf(currentNode);
-#pragma warning restore CS8604, CS8600
             }
             tempNodes.Reverse();
 
@@ -66,10 +65,8 @@ namespace astar
 
             for(int i = 0; i < tempNodes.Count - 1; i++)
             {
-#pragma warning disable CS8600, CS8604 // Route was found, so has to have an edge
                 Edge e = tempNodes[i].GetEdgeToNode(tempNodes[i + 1]);
                 steps.Add(new Step(tempNodes[i], e, GetTimeRequiredToReach(tempNodes[i]), GetDistanceToGoal(tempNodes[i])));
-#pragma warning restore CS8600, CS8604
                 totalDistance += e.distance;
             }
 
@@ -94,8 +91,9 @@ namespace astar
             }
 
             return _route;
+#pragma warning restore CS8604, CS8600
         }
-        
+
         /*
          * Compares two nodes and returns the node closer to the goal
          * -1 => n1 smaller n2
