@@ -20,10 +20,6 @@ namespace astar
             SetDistanceToGoal(start, Convert.ToSingle(Utils.DistanceBetweenNodes(start, goal)));
             while (toVisit.Count > 0 && GetTimeRequiredToReach(toVisit[0]) < GetTimeRequiredToReach(goal))
             {
-                if(currentNode == goal)
-                {
-                    logger?.Log(LogLevel.INFO, "Way found, checking for shorter option.");
-                }
                 currentNode = toVisit.First();
                 logger?.Log(LogLevel.VERBOSE, "toVisit-length: {0} path-length: {1} goal-distance: {2}", toVisit.Count, timeRequired[currentNode], goalDistance[currentNode]);
                 //Check all neighbors of current node
@@ -34,7 +30,8 @@ namespace astar
                         SetDistanceToGoal(e.neighbor, Convert.ToSingle(Utils.DistanceBetweenNodes(e.neighbor, goal)));
                         SetTimeRequiredToReach(e.neighbor, GetTimeRequiredToReach(currentNode) + e.time);
                         SetPreviousNodeOf(e.neighbor, currentNode);
-                        toVisit.Add(e.neighbor);
+                        if (!toVisit.Contains(e.neighbor))
+                            toVisit.Add(e.neighbor);
                     }
                 }
 
