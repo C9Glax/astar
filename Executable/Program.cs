@@ -56,5 +56,5 @@ do
         n2 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
         _route = new Astar().FindPath(graph, n1, n2, logger);
     } while (!_route.routeFound);
-    logger.Log(LogLevel.INFO, "Press Enter to find new path.");
-} while (Console.ReadKey().Key.Equals(ConsoleKey.Enter));
+    logger.Log(LogLevel.INFO, "Press any Key to continue. Press ESC to quit.");
+} while (!Console.ReadKey().Key.Equals(ConsoleKey.Escape));
