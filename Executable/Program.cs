@@ -149,6 +149,7 @@ do
         case ConsoleKey.L:
             foreach (Address ad in landmarks.addresses)
                 Console.WriteLine(ad.ToString());
+            logger.Log(LogLevel.INFO, "{0} total Addresses", landmarks.addresses.Count);
             break;
         case ConsoleKey.E:
 
