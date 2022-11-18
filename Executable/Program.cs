@@ -53,25 +53,30 @@ Route _route;
 Node? n1, n2;
 do
 {
-    logger.Log(LogLevel.INFO, "Press ESC to quit.");
-    logger.Log(LogLevel.INFO, "Press R for path-calculation between 2 random Nodes.");
-    logger.Log(LogLevel.INFO, "Press C for path-calculation between 2 input coordinates.");
-    logger.Log(LogLevel.INFO, "Press A for path-calculation between 2 addresses.");
-    logger.Log(LogLevel.INFO, "Press L to List all addresses.");
-    logger.Log(LogLevel.INFO, "Press N to get Information to Node-Id.");
+    Console.WriteLine("Press ESC to quit.");
+    Console.WriteLine("Press R for path-calculation between 2 random Nodes.");
+    Console.WriteLine("Press C for path-calculation between 2 input coordinates.");
+    Console.WriteLine("Press P for path-calculation between 2 addresses.");
+    Console.WriteLine("Press L to List all addresses.");
+    Console.WriteLine("Press N to get Information to Node-Id.");
+    Console.WriteLine("Press E to get Information to Edge-Id.");
+    Console.WriteLine("Press X to get Explore starting at Node-Id.");
+    Console.WriteLine("Press A to get Query Address.");
+
 
     ConsoleKey mode = Console.ReadKey().Key;
+    Console.Clear();
     switch (mode)
     {
         case ConsoleKey.Escape:
             return;
         case ConsoleKey.N:
-            logger.Log(LogLevel.INFO, "Enter Node-ID:");
+            Console.WriteLine("Enter Node-ID:");
             ulong id = Convert.ToUInt64(Console.ReadLine());
             n1 = graph.GetNode(id);
             if(n1 != null)
             {
-                logger.Log(LogLevel.INFO, "{0}: {1}", id, n1.ToString());
+                Console.WriteLine("{0}: {1}", id, n1.ToString());
             }
             break;
         case ConsoleKey.R:
@@ -86,65 +91,110 @@ do
             } while (!_route.routeFound);
             break;
         case ConsoleKey.C:
-            logger.Log(LogLevel.INFO, "Enter Coordinates for Node 1:");
+            Console.WriteLine("Enter Coordinates for Node 1:");
             float lat1 = Convert.ToSingle(Console.ReadLine());
             float lon1 = Convert.ToSingle(Console.ReadLine());
-            logger.Log(LogLevel.INFO, "Enter Coordinates for Node 2:");
+            Console.WriteLine("Enter Coordinates for Node 2:");
             float lat2 = Convert.ToSingle(Console.ReadLine());
             float lon2 = Convert.ToSingle(Console.ReadLine());
             n1 = graph.ClosestNodeToCoordinates(lat1, lon1);
             n2 = graph.ClosestNodeToCoordinates(lat2, lon2);
             _route = new Astar().FindPath(n1, n2, logger);
             break;
-        case ConsoleKey.A:
-            logger.Log(LogLevel.INFO, "Enter Address 1:");
+        case ConsoleKey.P:
+            Console.WriteLine("Enter Address 1:");
             List<Address> a1list = landmarks.GetAddressesForQuery(Console.ReadLine());
-            logger.Log(LogLevel.INFO, "Select Address 1:");
+            Console.WriteLine("Select Address 1:");
             for (int i = 0; i < a1list.Count; i++)
             {
-                logger.Log(LogLevel.INFO, "{0}: {1}", i, a1list[i].ToString());
+                Console.WriteLine("{0}: {1}", i, a1list[i].ToString());
             }
             Address a1 = a1list[Convert.ToInt32(Console.ReadLine())];
             if (graph.ContainsNode(a1.locationId))
             {
-                logger.Log(LogLevel.INFO, "Address already in graph");
+                Console.WriteLine("Address already in graph");
                 n1 = graph.GetNode(a1.locationId);
             }
             else
             {
                 n1 = graph.ClosestNodeToCoordinates(a1.lat, a1.lon);
-                logger.Log(LogLevel.INFO, "Closest Node\n{0}", n1);
+                Console.WriteLine("Closest Node {0}\n{1}", graph.GetNodeId(n1), n1);
             }
 
-            logger.Log(LogLevel.INFO, "Enter Address 2:");
+            Console.WriteLine("Enter Address 2:");
             List<Address> a2list = landmarks.GetAddressesForQuery(Console.ReadLine());
-            logger.Log(LogLevel.INFO, "Select Address 2:");
+            Console.WriteLine("Select Address 2:");
             for (int i = 0; i < a2list.Count; i++)
             {
-                logger.Log(LogLevel.INFO, "{0}: {1}", i, a2list[i].ToString());
+                Console.WriteLine("{0}: {1}", i, a2list[i].ToString());
             }
             Address a2 = a2list[Convert.ToInt32(Console.ReadLine())];
 
 
             if (graph.ContainsNode(a2.locationId))
             {
-                logger.Log(LogLevel.INFO, "Address already in graph");
+                Console.WriteLine("Address already in graph");
                 n2 = graph.GetNode(a2.locationId);
             }
             else
             {
                 n2 = graph.ClosestNodeToCoordinates(a2.lat, a2.lon);
-                logger.Log(LogLevel.INFO, "Closest Node\n{0}", n2);
+                Console.WriteLine("Closest Node {0}\n{1}", graph.GetNodeId(n2), n2);
             }
 
 
             _route = new Astar().FindPath(n1, n2, logger);
             break;
         case ConsoleKey.L:
-            foreach (Address a in landmarks.addresses)
-                logger.Log(LogLevel.INFO, a.ToString());
+            foreach (Address ad in landmarks.addresses)
+                Console.WriteLine(ad.ToString());
             break;
+        case ConsoleKey.E:
 
+            break;
+        case ConsoleKey.X:
+            Console.WriteLine("Enter quit to quit.");
+            Console.WriteLine("Enter Node-ID:");
+            n1 = graph.GetNode(Convert.ToUInt64(Console.ReadLine()));
+            while (true)
+            {
+                if (n1 != null)
+                {
+                    Console.WriteLine("{0}", n1.ToString());
+                }
+                Console.WriteLine("Select Edge:");
+                for(int i = 0; i < n1.edges.Count; i++)
+                {
+                    Console.WriteLine("{0}: {1}", i, n1.edges.ToArray()[i].ToString());
+                }
+                string? input = Console.ReadLine();
+                if (input == null || input == "quit")
+                    break;
+                int selectedEdge = Convert.ToInt32(input);
+                n1 = n1.edges.ToArray()[selectedEdge].neighbor;
+            }
+            
+            break;
+        case ConsoleKey.A:
+            Console.WriteLine("Enter Address:");
+            List<Address> alist = landmarks.GetAddressesForQuery(Console.ReadLine());
+            Console.WriteLine("Select Address:");
+            for (int i = 0; i < alist.Count; i++)
+            {
+                Console.WriteLine("{0}: {1}", i, alist[i].ToString());
+            }
+            Address a = alist[Convert.ToInt32(Console.ReadLine())];
+            if (graph.ContainsNode(a.locationId))
+            {
+                Console.WriteLine("Address already in graph");
+                n1 = graph.GetNode(a.locationId);
+            }
+            else
+            {
+                n1 = graph.ClosestNodeToCoordinates(a.lat, a.lon);
+                Console.WriteLine("Closest Node {0} Distance: {1}\n{2}", graph.GetNodeId(n1), Utils.DistanceBetween(n1, a.lat, a.lon), n1);
+            }
+            break;
         default:
             Console.Clear();
             break;
