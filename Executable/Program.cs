@@ -44,9 +44,9 @@ switch (args.Length)
         return;
 }
 logger.Log(LogLevel.INFO, "Loading Graph");
-Graph graph = OSM_XML_Importer.Importer.Import(xmlPath, onlyJunctions, logger);
+Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
 logger.Log(LogLevel.INFO, "Loading Landmarks");
-Landmarks landmarks = OSM_Landmarks.Importer.Import(xmlPath, logger);
+Landmarks landmarks = Importer.Import(xmlPath, logger);
 logger.Log(LogLevel.INFO, "Everything loaded.");
 
 Route _route;
