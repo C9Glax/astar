@@ -1,4 +1,5 @@
-﻿using GeoGraph;
+﻿#pragma warning disable CS8600, CS8601, CS8602, CS8604, CS8629
+using GeoGraph;
 using Logging;
 using astar;
 using OSM_XML_Importer;
@@ -44,9 +45,9 @@ switch (args.Length)
         return;
 }
 logger.Log(LogLevel.INFO, "Loading Graph");
-Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
+Graph graph = GraphImporter.Import(xmlPath, onlyJunctions, logger);
 logger.Log(LogLevel.INFO, "Loading Landmarks");
-Landmarks landmarks = Importer.Import(xmlPath, logger);
+Landmarks landmarks = LandmarksImporter.Import(xmlPath, logger);
 logger.Log(LogLevel.INFO, "Everything loaded.");
 
 Route _route;
@@ -110,14 +111,14 @@ do
                 Console.WriteLine("{0}: {1}", i, a1list[i].ToString());
             }
             Address a1 = a1list[Convert.ToInt32(Console.ReadLine())];
-            if (graph.ContainsNode(a1.locationId))
+            if (graph.ContainsNode((ulong)a1.locationId))
             {
                 Console.WriteLine("Address already in graph");
-                n1 = graph.GetNode(a1.locationId);
+                n1 = graph.GetNode((ulong)a1.locationId);
             }
             else
             {
-                n1 = graph.ClosestNodeToCoordinates(a1.lat, a1.lon);
+                n1 = graph.ClosestNodeToCoordinates((float)a1.lat, (float)a1.lon);
                 Console.WriteLine("Closest Node {0}\n{1}", graph.GetNodeId(n1), n1);
             }
 
@@ -131,14 +132,14 @@ do
             Address a2 = a2list[Convert.ToInt32(Console.ReadLine())];
 
 
-            if (graph.ContainsNode(a2.locationId))
+            if (graph.ContainsNode((ulong)a2.locationId))
             {
                 Console.WriteLine("Address already in graph");
-                n2 = graph.GetNode(a2.locationId);
+                n2 = graph.GetNode((ulong)a2.locationId);
             }
             else
             {
-                n2 = graph.ClosestNodeToCoordinates(a2.lat, a2.lon);
+                n2 = graph.ClosestNodeToCoordinates((float)a2.lat, (float)a2.lon);
                 Console.WriteLine("Closest Node {0}\n{1}", graph.GetNodeId(n2), n2);
             }
 
@@ -184,15 +185,15 @@ do
                 Console.WriteLine("{0}: {1}", i, alist[i].ToString());
             }
             Address a = alist[Convert.ToInt32(Console.ReadLine())];
-            if (graph.ContainsNode(a.locationId))
+            if (graph.ContainsNode((ulong)a.locationId))
             {
                 Console.WriteLine("Address already in graph");
-                n1 = graph.GetNode(a.locationId);
+                n1 = graph.GetNode((ulong)a.locationId);
             }
             else
             {
-                n1 = graph.ClosestNodeToCoordinates(a.lat, a.lon);
-                Console.WriteLine("Closest Node {0} Distance: {1}\n{2}", graph.GetNodeId(n1), Utils.DistanceBetween(n1, a.lat, a.lon), n1);
+                n1 = graph.ClosestNodeToCoordinates((float)a.lat, (float)a.lon);
+                Console.WriteLine("Closest Node {0} Distance: {1}\n{2}", graph.GetNodeId(n1), Utils.DistanceBetween(n1, (float)a.lat, (float)a.lon), n1);
             }
             break;
         default:
