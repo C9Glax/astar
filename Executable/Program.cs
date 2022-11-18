@@ -10,15 +10,18 @@ string[] confirmation = { "yes", "1", "true" };
 Logger logger = new(LogType.CONSOLE, LogLevel.DEBUG);
 string xmlPath;
 bool onlyJunctions;
+Way.speedType speedType;
 switch (args.Length)
 {
     case 0:
         xmlPath = @"";
         onlyJunctions = true;
+        speedType = Way.speedType.car;
         break;
     case 1:
         xmlPath = args[0];
         onlyJunctions = true;
+        speedType = Way.speedType.car;
         if (!File.Exists(xmlPath))
         {
             logger.Log(LogLevel.INFO, "File {0} does not exist.", xmlPath);
@@ -36,12 +39,32 @@ switch (args.Length)
             onlyJunctions = true;
         else
             onlyJunctions = false;
+        speedType = Way.speedType.car;
+        break;
+    case 3:
+        xmlPath = args[0];
+        if (!File.Exists(xmlPath))
+        {
+            logger.Log(LogLevel.INFO, "File {0} does not exist.", xmlPath);
+            throw new FileNotFoundException(xmlPath);
+        }
+        if (confirmation.Contains(args[1].ToLower()))
+            onlyJunctions = true;
+        else
+            onlyJunctions = false;
+        if (args[2].Equals("car"))
+            speedType = Way.speedType.car;
+        else if (args[2].Equals("ped") || args[2].Equals("pedestrian"))
+            speedType = Way.speedType.pedestrian;
+        else
+            return;
         break;
     default:
         logger.Log(LogLevel.INFO, "Invalid Arguments.");
         logger.Log(LogLevel.INFO, "Arguments can be:");
         logger.Log(LogLevel.INFO, "arg0 Path to file: string");
         logger.Log(LogLevel.INFO, "arg1 onlyJunctions: 'yes', '1', 'true'");
+        logger.Log(LogLevel.INFO, "arg2 speedType: 'car', 'ped', 'pedestrian'");
         return;
 }
 logger.Log(LogLevel.INFO, "Loading Graph");
@@ -88,7 +111,7 @@ do
                 n2 = temp.Values.ToArray()[1];
                 Console.WriteLine();
                 Console.WriteLine();
-                _route = new Astar().FindPath(n1, n2, logger);
+                _route = new Astar().FindPath(n1, n2, speedType, logger);
             } while (!_route.routeFound);
             break;
         case ConsoleKey.C:
@@ -100,7 +123,7 @@ do
             float lon2 = Convert.ToSingle(Console.ReadLine());
             n1 = graph.ClosestNodeToCoordinates(lat1, lon1);
             n2 = graph.ClosestNodeToCoordinates(lat2, lon2);
-            _route = new Astar().FindPath(n1, n2, logger);
+            _route = new Astar().FindPath(n1, n2, speedType, logger);
             break;
         case ConsoleKey.P:
             Console.WriteLine("Enter Address 1:");
@@ -144,7 +167,7 @@ do
             }
 
 
-            _route = new Astar().FindPath(n1, n2, logger);
+            _route = new Astar().FindPath(n1, n2, speedType, logger);
             break;
         case ConsoleKey.L:
             foreach (Address ad in landmarks.addresses)

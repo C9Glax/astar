@@ -9,7 +9,7 @@ namespace astar
         private Dictionary<Node, float> goalDistance = new();
         private Dictionary<Node, Node> previousNode = new();
 
-        public Route FindPath(Node start, Node goal, Logger? logger)
+        public Route FindPath(Node start, Node goal, Way.speedType speedType, Logger? logger)
         {
             logger?.Log(LogLevel.INFO, "From\n{0}\nto\n{1}\nGreat-Circle {2:00000.00}km", start, goal, Utils.DistanceBetween(start, goal) / 1000);
             List<Node> toVisit = new();
@@ -24,10 +24,11 @@ namespace astar
                 //Check all neighbors of current node
                 foreach (Edge e in currentNode.edges)
                 {
-                    if (GetTimeRequiredToReach(e.neighbor) > GetTimeRequiredToReach(currentNode) + e.time)
+                    double time = e.distance / e.way.GetMaxSpeed(speedType);
+                    if (GetTimeRequiredToReach(e.neighbor) > GetTimeRequiredToReach(currentNode) + time)
                     {
                         SetDistanceToGoal(e.neighbor, Convert.ToSingle(Utils.DistanceBetween(e.neighbor, goal)));
-                        SetTimeRequiredToReach(e.neighbor, GetTimeRequiredToReach(currentNode) + e.time);
+                        SetTimeRequiredToReach(e.neighbor, GetTimeRequiredToReach(currentNode) + Convert.ToSingle(time));
                         SetPreviousNodeOf(e.neighbor, currentNode);
                         if (!toVisit.Contains(e.neighbor))
                             toVisit.Add(e.neighbor);
@@ -76,16 +77,16 @@ namespace astar
             if(logger?.level > LogLevel.INFO)
             {
 
-                float time = 0;
-                float distance = 0;
+                float totalTime = 0;
+                totalDistance = 0;
 
                 logger?.Log(LogLevel.DEBUG, "Route Distance: {0:00000.00km} Time: {1}", _route.distance/1000, TimeSpan.FromSeconds(_route.time));
                 for(int i = 0; i < _route.steps.Count; i++)
                 {
                     Step s = _route.steps[i];
-                    time += s.edge.time;
-                    distance += s.edge.distance;
-                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} along {5:0000000000} after {6} and {7:0000.00}km", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.id, TimeSpan.FromSeconds(timeRequired[s.start]), distance/1000);
+                    totalTime += s.edge.distance / s.edge.way.GetMaxSpeed(speedType);
+                    totalDistance += s.edge.distance;
+                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} along {5:0000000000} after {6} and {7:0000.00}km", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.id, TimeSpan.FromSeconds(timeRequired[s.start]), totalDistance/1000);
                 }
             }
 
