@@ -41,7 +41,6 @@ namespace astar
             if(GetPreviousNodeOf(goal) != null)
             {
                 logger?.Log(LogLevel.INFO, "Way found, shortest option.");
-                currentNode = goal;
             }
             else
             {
@@ -52,7 +51,8 @@ namespace astar
 #pragma warning disable CS8604, CS8600 // Route was found, so has to have a previous node and edges
             List<Node> tempNodes = new();
             tempNodes.Add(goal);
-            while(currentNode != start)
+            currentNode = goal;
+            while (currentNode != start)
             {
                 tempNodes.Add(GetPreviousNodeOf(currentNode));
                 currentNode = GetPreviousNodeOf(currentNode);
