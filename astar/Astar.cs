@@ -86,7 +86,7 @@ namespace astar
                     Step s = _route.steps[i];
                     totalTime += s.edge.distance / s.edge.GetMaxSpeed(speedType);
                     totalDistance += s.edge.distance;
-                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} along {5:0000000000} after {6} and {7:0000.00}km", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.id, TimeSpan.FromSeconds(timeRequired[s.start]), totalDistance/1000);
+                    logger?.Log(LogLevel.DEBUG, "Step {0:000} From {1:000.00000}#{2:000.00000} To {3:000.00000}#{4:000.00000} Speed {5} Time {6} Distance {7:0000.00}km", i, s.start.lat, s.start.lon, s.edge.neighbor.lat, s.edge.neighbor.lon, s.edge.GetMaxSpeed(speedType), TimeSpan.FromSeconds(timeRequired[s.start]), totalDistance/1000);
                 }
             }
 
