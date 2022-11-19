@@ -75,21 +75,19 @@ logger.Log(LogLevel.INFO, "Everything loaded.");
 
 Route _route;
 Node? n1, n2;
+Console.WriteLine("Press ESC to quit.");
+Console.WriteLine("Press H to print this.");
+Console.WriteLine("Press R for path-calculation between 2 random Nodes.");
+Console.WriteLine("Press C for path-calculation between 2 input coordinates.");
+Console.WriteLine("Press P for path-calculation between 2 addresses.");
+Console.WriteLine("Press L to List all addresses.");
+Console.WriteLine("Press N to get Information to Node-Id.");
+Console.WriteLine("Press E to get Information to Edge-Id.");
+Console.WriteLine("Press X to get Explore starting at Node-Id.");
+Console.WriteLine("Press A to get Query Address.");
 do
 {
-    Console.WriteLine("Press ESC to quit.");
-    Console.WriteLine("Press R for path-calculation between 2 random Nodes.");
-    Console.WriteLine("Press C for path-calculation between 2 input coordinates.");
-    Console.WriteLine("Press P for path-calculation between 2 addresses.");
-    Console.WriteLine("Press L to List all addresses.");
-    Console.WriteLine("Press N to get Information to Node-Id.");
-    Console.WriteLine("Press E to get Information to Edge-Id.");
-    Console.WriteLine("Press X to get Explore starting at Node-Id.");
-    Console.WriteLine("Press A to get Query Address.");
-
-
     ConsoleKey mode = Console.ReadKey().Key;
-    Console.Clear();
     switch (mode)
     {
         case ConsoleKey.Escape:
@@ -183,15 +181,12 @@ do
             n1 = graph.GetNode(Convert.ToUInt64(Console.ReadLine()));
             while (true)
             {
+                Console.Clear();
                 if (n1 != null)
                 {
                     Console.WriteLine("{0}", n1.ToString());
                 }
                 Console.WriteLine("Select Edge:");
-                for(int i = 0; i < n1.edges.Count; i++)
-                {
-                    Console.WriteLine("{0}: {1}", i, n1.edges.ToArray()[i].ToString());
-                }
                 string? input = Console.ReadLine();
                 if (input == null || input == "quit")
                     break;
@@ -220,8 +215,18 @@ do
                 Console.WriteLine("Closest Node {0} Distance: {1}\n{2}", graph.GetNodeId(n1), Utils.DistanceBetween(n1, (float)a.lat, (float)a.lon), n1);
             }
             break;
+        case ConsoleKey.H:
         default:
-            Console.Clear();
+            Console.WriteLine("Press ESC to quit.");
+            Console.WriteLine("Press H to print this.");
+            Console.WriteLine("Press R for path-calculation between 2 random Nodes.");
+            Console.WriteLine("Press C for path-calculation between 2 input coordinates.");
+            Console.WriteLine("Press P for path-calculation between 2 addresses.");
+            Console.WriteLine("Press L to List all addresses.");
+            Console.WriteLine("Press N to get Information to Node-Id.");
+            Console.WriteLine("Press E to get Information to Edge-Id.");
+            Console.WriteLine("Press X to get Explore starting at Node-Id.");
+            Console.WriteLine("Press A to get Query Address.");
             break;
     }
 } while (true);
