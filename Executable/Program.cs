@@ -14,7 +14,7 @@ Way.speedType speedType;
 switch (args.Length)
 {
     case 0:
-        xmlPath = @"";
+        xmlPath = @"C:\Users\glax\Downloads\oberbayern-latest.osm";
         onlyJunctions = true;
         speedType = Way.speedType.car;
         break;
