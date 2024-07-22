@@ -13,14 +13,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Geo-Graph">
-      <HintPath>C:\Users\glax\source\repos\Geo-Graph\Geo-Graph\bin\Debug\net6.0\Geo-Graph.dll</HintPath>
+    <PackageReference Include="GlaxArguments" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Graph">
+      <HintPath>..\..\OSM_Graph\OSM_Graph\bin\Debug\net8.0\Graph.dll</HintPath>
     </Reference>
-    <Reference Include="Logging">
-      <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
+    <Reference Include="OSM_Graph">
+      <HintPath>..\..\OSM_Graph\OSM_Graph\bin\Debug\net8.0\OSM_Graph.dll</HintPath>
     </Reference>
-    <Reference Include="OSM-XML-Importer">
-      <HintPath>C:\Users\glax\source\repos\OSM-XML-Importer\OSM-XML-Importer\bin\Debug\net6.0\OSM-XML-Importer.dll</HintPath>
+    <Reference Include="OSM_Regions">
+      <HintPath>..\..\OSM_Regions\OSM_Regions\bin\Debug\net8.0\OSM_Regions.dll</HintPath>
     </Reference>
   </ItemGroup>
 

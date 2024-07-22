@@ -1,60 +1,80 @@
-﻿using GeoGraph;
-using Logging;
+﻿using System.Diagnostics;
+using System.Globalization;
 using astar;
-using OSM_XML_Importer;
+using GlaxArguments;
+using GlaxLogger;
+using Microsoft.Extensions.Logging;
+using OSM_Regions;
 
-string[] confirmation = { "yes", "1", "true" };
+Logger logger = new(LogLevel.Debug, consoleOut: Console.Out);
 
-Logger logger = new(LogType.CONSOLE, LogLevel.DEBUG);
-string xmlPath;
-bool onlyJunctions;
-switch (args.Length)
+Argument pathArg = new (["-p", "--path"], 1, "Path to OSM-XML-File");
+Argument regionArg = new (["-r", "--regionSize"], 1, "Region-Size");
+Argument importPathArg = new (["-i", "--importPath"], 1, "Region-Directory");
+Argument routeCoordinateArg = new(["-c", "--route", "--coordinates"], 4, "Start and end coordinates");
+
+ArgumentFetcher af = new ([pathArg, regionArg, importPathArg, routeCoordinateArg]);
+
+Dictionary<Argument, string[]> arguments = af.Fetch(args);
+
+if (!arguments.ContainsKey(regionArg))
 {
-    case 0:
-        xmlPath = @"";
-        onlyJunctions = true;
-        break;
-    case 1:
-        xmlPath = args[0];
-        onlyJunctions = true;
-        if (!File.Exists(xmlPath))
-        {
-            logger.Log(LogLevel.INFO, "File {0} does not exist.", xmlPath);
-            throw new FileNotFoundException(xmlPath);
-        }
-        break;
-    case 2:
-        xmlPath = args[0];
-        if (!File.Exists(xmlPath))
-        {
-            logger.Log(LogLevel.INFO, "File {0} does not exist.", xmlPath);
-            throw new FileNotFoundException(xmlPath);
-        }
-        if (confirmation.Contains(args[1].ToLower()))
-            onlyJunctions = true;
-        else
-            onlyJunctions = false;
-        break;
-    default:
-        logger.Log(LogLevel.INFO, "Invalid Arguments.");
-        logger.Log(LogLevel.INFO, "Arguments can be:");
-        logger.Log(LogLevel.INFO, "arg0 Path to file: string");
-        logger.Log(LogLevel.INFO, "arg1 onlyJunctions: 'yes', '1', 'true'");
-        return;
+    PrintUsage();
+    return;
+}
+if (!float.TryParse(arguments[regionArg][0], NumberFormatInfo.InvariantInfo, out float regionSize))
+{
+    logger.LogError($"Failed to parse region Size from input w{arguments[regionArg][0]}");
+    return;
 }
 
-Graph graph = Importer.Import(xmlPath, onlyJunctions, logger);
-
-Random r = new();
-Route _route;
-Node n1, n2;
-do
+if (!arguments.ContainsKey(routeCoordinateArg))
 {
-    do
+    PrintUsage();
+    return;
+}
+if (!float.TryParse(arguments[routeCoordinateArg][0], NumberFormatInfo.InvariantInfo, out float startLat) ||
+    !float.TryParse(arguments[routeCoordinateArg][1], NumberFormatInfo.InvariantInfo, out float startLon) ||
+    !float.TryParse(arguments[routeCoordinateArg][2], NumberFormatInfo.InvariantInfo, out float endLat) ||
+    !float.TryParse(arguments[routeCoordinateArg][3], NumberFormatInfo.InvariantInfo, out float endLon) )
+{
+    logger.LogError($"Failed to parse start/end coordinates.");
+    return;
+}
+
+string? importPath = null;
+if (arguments.TryGetValue(importPathArg, out string[]? importPathVal))
+{
+    importPath = importPathVal[0];
+}
+
+if (arguments.TryGetValue(pathArg, out string[]? pathValue))
+{
+    if(!File.Exists(pathValue[0]))
     {
-        n1 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-        n2 = graph.NodeAtIndex(r.Next(0, graph.GetNodeCount() - 1));
-        _route = new Astar().FindPath(graph, n1, n2, logger);
-    } while (!_route.routeFound);
-    logger.Log(LogLevel.INFO, "Press Enter to find new path.");
-} while (Console.ReadKey().Key.Equals(ConsoleKey.Enter));
+        logger.LogError($"File doesn't exist {pathValue[0]}");
+        PrintUsage();
+        return;
+    }
+
+    Converter converter = new (regionSize, importPath, logger: logger);
+    converter.SplitOsmExportIntoRegionFiles(pathValue[0]);
+}
+
+Route route = Astar.FindPath(startLat, startLon, endLat, endLon, regionSize, importPath, logger);
+if(route.RouteFound)
+    Console.WriteLine($"{string.Join("\n", route.Steps)}\n" +
+                      $"Distance: {route.Distance:000000.00}m");
+else
+    Console.WriteLine("No route found.");
+
+Console.WriteLine($"Visited Nodes: {route.Graph.Nodes.Values.Count(node => node.Previous is not null)}");
+
+
+void PrintUsage()
+{
+    Console.WriteLine($"Usage: {Process.GetCurrentProcess().MainModule?.FileName} <-r regionSize> <-c startLat startLon endLat endLon> <options>\n" +
+                      $"Options:\n" +
+                      $"\t-h onlyHighways\n" +
+                      $"\t-p Path to OSM-XML file to split into regions");
+}

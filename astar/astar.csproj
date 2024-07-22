@@ -8,11 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Geo-Graph">
-      <HintPath>C:\Users\glax\source\repos\Geo-Graph\Geo-Graph\bin\Debug\net6.0\Geo-Graph.dll</HintPath>
+    <PackageReference Include="GlaxLogger" Version="1.0.7.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Graph">
+      <HintPath>..\..\OSM_Graph\OSM_Graph\bin\Debug\net8.0\Graph.dll</HintPath>
     </Reference>
-    <Reference Include="Logging">
-      <HintPath>..\..\Logging\Logging\bin\Debug\net6.0\Logging.dll</HintPath>
+    <Reference Include="OSM_Graph">
+      <HintPath>..\..\OSM_Graph\OSM_Graph\bin\Debug\net8.0\OSM_Graph.dll</HintPath>
+    </Reference>
+    <Reference Include="OSM_Regions">
+      <HintPath>..\..\OSM_Regions\OSM_Regions\bin\Debug\net8.0\OSM_Regions.dll</HintPath>
     </Reference>
   </ItemGroup>
 
