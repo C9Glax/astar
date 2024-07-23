@@ -37,7 +37,6 @@ namespace astar
 
             while (toVisitStart.Count > 0 && toVisitEnd.Count > 0)
             {
-                logger?.LogDebug($"Length toVisit-Start: {toVisitStart.Count} -End: {toVisitEnd.Count}");
                 ulong currentNodeStartId = toVisitStart.Dequeue();
                 Node currentNodeStart = graph.Nodes[currentNodeStartId];
                 foreach ((ulong neighborId, ulong wayId) in currentNodeStart.Neighbors)
@@ -101,6 +100,7 @@ namespace astar
                     }
                     logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }
+                logger?.LogDebug($"Distance {currentNodeStart.DistanceTo(currentNodeEnd):000000.00}m toVisit-Queues: {toVisitStart.Count} {toVisitEnd.Count}");
 
             }
             return new Route(graph, Array.Empty<Step>().ToList(), false);
