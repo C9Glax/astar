@@ -25,15 +25,17 @@ namespace astar
             endNode.Value.PreviousNodeId = endNode.Key;
             endNode.Value.Distance = 0f;
 
+            double totalDistance = NodeUtils.DistanceBetween(startNode.Value, endNode.Value);
+            PriorityHelper priorityHelper = new(totalDistance, SpeedHelper.GetMaxSpeed(car));
+
             logger?.Log(LogLevel.Information,
                 "From {0:00.00000}#{1:000.00000} to {2:00.00000}#{3:000.00000} Great-Circle {4:00000.00}km",
-                startNode.Value.Lat, startNode.Value.Lon, endNode.Value.Lat, endNode.Value.Lon,
-                NodeUtils.DistanceBetween(startNode.Value, endNode.Value) / 1000);
+                startNode.Value.Lat, startNode.Value.Lon, endNode.Value.Lat, endNode.Value.Lon, totalDistance / 1000);
 
-            PriorityQueue<ulong, double> toVisitStart = new();
-            toVisitStart.Enqueue(startNode.Key, NodeUtils.DistanceBetween(startNode.Value, endNode.Value));
-            PriorityQueue<ulong, double> toVisitEnd = new();
-            toVisitEnd.Enqueue(endNode.Key, NodeUtils.DistanceBetween(endNode.Value, startNode.Value));
+            PriorityQueue<ulong, int> toVisitStart = new();
+            toVisitStart.Enqueue(startNode.Key, 0);
+            PriorityQueue<ulong, int> toVisitEnd = new();
+            toVisitEnd.Enqueue(endNode.Key, 0);
 
             while (toVisitStart.Count > 0 && toVisitEnd.Count > 0)
             {
@@ -59,12 +61,12 @@ namespace astar
                         return PathFound(graph, currentNodeStart, neighborNode, logger);
                     
                     float distance = (currentNodeStart.Distance??float.MaxValue) + (float)currentNodeStart.DistanceTo(neighborNode);
-                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance && currentNodeStart.PreviousNodeId != neighborId)
+                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
                     {
                         neighborNode.PreviousNodeId = currentNodeStartId;
                         neighborNode.Distance = distance;
                         neighborNode.PreviousIsFromStart = true;
-                        toVisitStart.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, endNode.Value) / speed);
+                        toVisitStart.Enqueue(neighborId, priorityHelper.CalculatePriority(currentNodeStart, neighborNode, endNode.Value, speed));
                     }
                     logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }
@@ -90,17 +92,17 @@ namespace astar
                     if (neighborNode.PreviousIsFromStart is true)//Check if we found the opposite End
                         return PathFound(graph, neighborNode, currentNodeEnd, logger);
                     
-                    float distance = (currentNodeStart.Distance??float.MaxValue) + (float)currentNodeStart.DistanceTo(neighborNode);
+                    float distance = (currentNodeEnd.Distance??float.MaxValue) + (float)currentNodeEnd.DistanceTo(neighborNode);
                     if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
                     {
                         neighborNode.PreviousNodeId = currentNodeEndId;
                         neighborNode.Distance = distance;
                         neighborNode.PreviousIsFromStart = false;
-                        toVisitEnd.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, startNode.Value) / speed);
+                        toVisitEnd.Enqueue(neighborId, priorityHelper.CalculatePriority(currentNodeEnd, neighborNode, startNode.Value, speed));
                     }
                     logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }
-                logger?.LogDebug($"Distance {currentNodeStart.DistanceTo(currentNodeEnd):000000.00}m toVisit-Queues: {toVisitStart.Count} {toVisitEnd.Count}");
+                logger?.LogDebug($"Distance {currentNodeStart.DistanceTo(currentNodeEnd):000000.00}m toVisit-Queues: {toVisitStart.Count} {toVisitStart.UnorderedItems.MinBy(i => i.Priority).Priority} {toVisitEnd.Count} {toVisitEnd.UnorderedItems.MinBy(i => i.Priority).Priority}");
 
             }
             return new Route(graph, Array.Empty<Step>().ToList(), false);

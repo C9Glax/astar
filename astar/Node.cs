@@ -10,6 +10,6 @@ public class Node(float lat, float lon, Dictionary<ulong, ulong>? neighbors = nu
 
     public override string ToString()
     {
-        return $"{Lat:00.000000} {Lon:000.000000} Previous {PreviousNodeId} {(PreviousIsFromStart is not null ? PreviousIsFromStart.Value ?"Start":"End" : null)}";
+        return $"{Lat:00.000000} {Lon:000.000000} Previous {PreviousNodeId} {Distance} {(PreviousIsFromStart is not null ? PreviousIsFromStart.Value ?"Start":"End" : null)}";
     }
 }
