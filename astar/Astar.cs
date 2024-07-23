@@ -82,6 +82,8 @@ namespace astar
                 byte speed = SpeedHelper.GetSpeed(way, car);
                 if(speed < 1)
                     continue;
+                if(!way.AccessPermitted())
+                    continue;
                 
                 if(wayId.Value && way.GetDirection() == (fromStart ? WayDirection.Forwards : WayDirection.Backwards) && car)
                     continue;
