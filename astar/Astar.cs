@@ -92,7 +92,7 @@ namespace astar
                         return PathFound(graph, neighborNode, currentNodeEnd, logger);
                     
                     float distance = (currentNodeStart.Distance??float.MaxValue) + (float)currentNodeStart.DistanceTo(neighborNode);
-                    if (neighborNode.PreviousIsFromStart is null || neighborNode.Distance > distance && currentNodeEnd.PreviousNodeId != neighborId)
+                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
                     {
                         neighborNode.PreviousNodeId = currentNodeEndId;
                         neighborNode.Distance = distance;
