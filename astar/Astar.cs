@@ -2,6 +2,7 @@
 using Graph;
 using Microsoft.Extensions.Logging;
 using Graph.Utils;
+using OSM_Graph.Enums;
 using OSM_Regions;
 
 namespace astar
@@ -13,13 +14,13 @@ namespace astar
         {
             RegionLoader rl = new(regionSize, importFolderPath, logger: logger);
             Graph graph = Spiral(rl, startLat, startLon, regionSize);
+            Graph endRegion = Spiral(rl, endLat, endLon, regionSize);
+            graph.ConcatGraph(endRegion);
             KeyValuePair<ulong, Node> startNode = graph.ClosestNodeToCoordinates(startLat, startLon, car);
             startNode.Value.PreviousIsFromStart = true;
             startNode.Value.PreviousNodeId = startNode.Key;
             startNode.Value.Distance = 0f;
             
-            Graph endRegion = Spiral(rl, endLat, endLon, regionSize);
-            graph.ConcatGraph(endRegion);
             KeyValuePair<ulong, Node> endNode = graph.ClosestNodeToCoordinates(endLat, endLon, car);
             endNode.Value.PreviousIsFromStart = false;
             endNode.Value.PreviousNodeId = endNode.Key;
@@ -41,20 +42,25 @@ namespace astar
             {
                 ulong currentNodeStartId = toVisitStart.Dequeue();
                 Node currentNodeStart = graph.Nodes[currentNodeStartId];
-                foreach ((ulong neighborId, ulong wayId) in currentNodeStart.Neighbors)
+                foreach ((ulong neighborId, KeyValuePair<ulong, bool> wayId) in currentNodeStart.Neighbors)
                 {
                     if (!graph.ContainsNode(neighborId))
                         graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
-                    if (!graph.ContainsWay(wayId))
+                    if (!graph.ContainsWay(wayId.Key))
                     {
-                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId))
+                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId.Key))
                             graph.ConcatGraph(Graph.FromGraph(g));
                     }
 
-                    Way way = graph.Ways[wayId];
+                    OSM_Graph.Way way = graph.Ways[wayId.Key];
                     byte speed = SpeedHelper.GetSpeed(way, car);
                     if(speed < 1)
                         continue;
+                    if(wayId.Value && way.GetDirection() == WayDirection.Forwards && car)
+                        continue;
+                    if(!wayId.Value && way.GetDirection() == WayDirection.Backwards && car)
+                        continue;
+                    
                     Node neighborNode = graph.Nodes[neighborId];
                     
                     if (neighborNode.PreviousIsFromStart is false)//Check if we found the opposite End
@@ -73,20 +79,26 @@ namespace astar
                 
                 ulong currentNodeEndId = toVisitEnd.Dequeue();
                 Node currentNodeEnd = graph.Nodes[currentNodeEndId];
-                foreach ((ulong neighborId, ulong wayId) in currentNodeEnd.Neighbors)
+                foreach ((ulong neighborId, KeyValuePair<ulong, bool> wayId) in currentNodeEnd.Neighbors)
                 {
                     if (!graph.ContainsNode(neighborId))
                         graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
-                    if (!graph.ContainsWay(wayId))
+                    if (!graph.ContainsWay(wayId.Key))
                     {
-                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId))
+                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId.Key))
                             graph.ConcatGraph(Graph.FromGraph(g));
                     }
                     
-                    Way way = graph.Ways[wayId];
+                    OSM_Graph.Way way = graph.Ways[wayId.Key];
                     byte speed = SpeedHelper.GetSpeed(way, car);
                     if(speed < 1)
                         continue;
+                    
+                    if(wayId.Value && way.GetDirection() == WayDirection.Backwards && car)
+                        continue;
+                    if(!wayId.Value && way.GetDirection() == WayDirection.Forwards && car)
+                        continue;
+                    
                     Node neighborNode = graph.Nodes[neighborId];
                     
                     if (neighborNode.PreviousIsFromStart is true)//Check if we found the opposite End

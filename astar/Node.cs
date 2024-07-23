@@ -1,6 +1,6 @@
 ﻿namespace astar;
 
-public class Node(float lat, float lon, Dictionary<ulong, ulong>? neighbors = null) : global::Graph.Node(lat, lon, neighbors)
+public class Node(float lat, float lon, Dictionary<ulong, KeyValuePair<ulong, bool>>? neighbors = null) : global::Graph.Node(lat, lon, neighbors)
 {
     public ulong? PreviousNodeId = null;
     public float? Distance = null;

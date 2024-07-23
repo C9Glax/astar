@@ -6,7 +6,7 @@ namespace astar;
 public class Graph
 {
     public readonly Dictionary<ulong, Node> Nodes = new();
-    public readonly Dictionary<ulong, Way> Ways = new ();
+    public readonly Dictionary<ulong, OSM_Graph.Way> Ways = new ();
 
     public static Graph? FromGraph(global::Graph.Graph? graph)
     {
@@ -16,7 +16,7 @@ public class Graph
         foreach ((ulong id, global::Graph.Node? node) in graph.Nodes)
             ret.Nodes.Add(id, Node.FromGraphNode(node));
         foreach ((ulong id, Way? way) in graph.Ways)
-            ret.Ways.Add(id, way);
+            ret.Ways.Add(id, new OSM_Graph.Way(id, way.Tags, new()));
         return ret;
     }
 
@@ -26,7 +26,7 @@ public class Graph
             return;
         foreach ((ulong id, Node n) in graph.Nodes)
             this.Nodes.TryAdd(id, n);
-        foreach ((ulong id, Way w) in graph.Ways)
+        foreach ((ulong id, OSM_Graph.Way w) in graph.Ways)
             this.Ways.TryAdd(id, w);
     }
 
@@ -40,7 +40,7 @@ public class Graph
         return Nodes.ContainsKey(nodeId);
     }
 
-    public bool ContainsWay(Way way)
+    public bool ContainsWay(OSM_Graph.Way way)
     {
         return Ways.ContainsValue(way);
     }
@@ -52,7 +52,7 @@ public class Graph
 
     public KeyValuePair<ulong, Node> ClosestNodeToCoordinates(float lat, float lon, bool car = true)
     {
-        return Nodes.Where(n => n.Value.Neighbors.Values.Any(wayId => SpeedHelper.GetSpeed(Ways[wayId], car) > 0)).MinBy(n => n.Value.DistanceTo(lat, lon));
+        return Nodes.Where(n => n.Value.Neighbors.Values.Any(way => SpeedHelper.GetSpeed(Ways[way.Key], car) > 0)).MinBy(n => n.Value.DistanceTo(lat, lon));
     }
 
     public override string ToString()

@@ -1,23 +1,17 @@
 ﻿using Graph;
+using OSM_Graph.Enums;
 
 namespace astar.PathingHelper;
 
 internal static class SpeedHelper
 {
-    public static byte GetSpeed(Way way, bool car = true)
+    public static byte GetSpeed(OSM_Graph.Way way, bool car = true)
     {
-        if (!way.Tags.TryGetValue("highway", out string? highwayTypeStr))
-            return 0;
-        if (!Enum.TryParse(highwayTypeStr, out HighwayType highwayType))
-            return 0;
-        byte speed = car ? SpeedCar[highwayType] : SpeedPedestrian[highwayType];
-        if (speed < 1)
-            return speed;
-        if(!way.Tags.TryGetValue("maxspeed", out string? maxSpeedStr))
-            return speed;
-        if (!byte.TryParse(maxSpeedStr, out speed))
-            return speed;
-        return speed;
+        byte maxspeed = way.GetMaxSpeed();
+        if (maxspeed != 0)
+            return maxspeed;
+        HighwayType highwayType = way.GetHighwayType();
+        return car ? SpeedCar[highwayType] : SpeedPedestrian[highwayType];
     }
 
     public static byte GetMaxSpeed(bool car = true)
