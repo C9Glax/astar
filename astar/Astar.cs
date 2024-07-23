@@ -64,7 +64,7 @@ namespace astar
                     Node neighborNode = graph.Nodes[neighborId];
                     
                     if (neighborNode.PreviousIsFromStart is false)//Check if we found the opposite End
-                        return PathFound(graph, currentNodeStart, neighborNode, logger);
+                        return PathFound(graph, currentNodeStart, neighborNode, car, logger);
                     
                     float distance = (currentNodeStart.Distance??float.MaxValue) + (float)currentNodeStart.DistanceTo(neighborNode);
                     if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
@@ -102,7 +102,7 @@ namespace astar
                     Node neighborNode = graph.Nodes[neighborId];
                     
                     if (neighborNode.PreviousIsFromStart is true)//Check if we found the opposite End
-                        return PathFound(graph, neighborNode, currentNodeEnd, logger);
+                        return PathFound(graph, neighborNode, currentNodeEnd, car, logger);
                     
                     float distance = (currentNodeEnd.Distance??float.MaxValue) + (float)currentNodeEnd.DistanceTo(neighborNode);
                     if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
@@ -120,25 +120,30 @@ namespace astar
             return new Route(graph, Array.Empty<Step>().ToList(), false);
         }
 
-        private static Route PathFound(Graph graph, Node fromStart, Node fromEnd, ILogger? logger = null)
+        private static Route PathFound(Graph graph, Node fromStart, Node fromEnd, bool car = true, ILogger? logger = null)
         {
             logger?.LogInformation("Path found!");
             List<Step> path = new();
-            path.Add(new Step((float)NodeUtils.DistanceBetween(fromStart, fromEnd), fromStart, fromEnd));
+            OSM_Graph.Way toNeighbor = graph.Ways[fromStart.Neighbors.First(n => graph.Nodes[n.Key] == fromEnd).Value.Key];
+            path.Add(new Step(fromStart, fromEnd, (float)fromStart.DistanceTo(fromEnd), SpeedHelper.GetSpeed(toNeighbor, car)));
             Node current = fromStart;
             while (current.Distance != 0f)
             {
-                Step step = new((float)NodeUtils.DistanceBetween(graph.Nodes[(ulong)current.PreviousNodeId!], current), graph.Nodes[(ulong)current.PreviousNodeId!], current);
+                Node previous = graph.Nodes[(ulong)current.PreviousNodeId!];
+                OSM_Graph.Way previousToCurrent = graph.Ways[previous.Neighbors.First(n => graph.Nodes[n.Key] == current).Value.Key];
+                Step step = new(previous, current, (float)previous.DistanceTo(current), SpeedHelper.GetSpeed(previousToCurrent, car));
                 path.Add(step);
-                current = graph.Nodes[(ulong)current.PreviousNodeId!];
+                current = previous;
             }
             path.Reverse();//Since we go from the middle backwards until here
             current = fromEnd;
             while (current.Distance != 0f)
             {
-                Step step = new((float)NodeUtils.DistanceBetween(graph.Nodes[(ulong)current.PreviousNodeId!], current), current, graph.Nodes[(ulong)current.PreviousNodeId!]);
+                Node next = graph.Nodes[(ulong)current.PreviousNodeId!];
+                OSM_Graph.Way currentToNext = graph.Ways[current.Neighbors.First(n => graph.Nodes[n.Key] == next).Value.Key];
+                Step step = new(current, next, (float)current.DistanceTo(next), SpeedHelper.GetSpeed(currentToNext, car));
                 path.Add(step);
-                current = graph.Nodes[(ulong)current.PreviousNodeId!];
+                current = next;
             }
 
             Route r = new (graph, path, true);
