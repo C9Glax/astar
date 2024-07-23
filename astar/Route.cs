@@ -7,40 +7,24 @@
         public bool RouteFound { get; } = routeFound;
         public float Distance => Steps.Sum(step => step.Distance);
 
-        public KeyValuePair<float, float> MinCoordinates()
+        public ValueTuple<float, float> MinCoordinates()
         {
-            float minLat, minLon;
-            if (RouteFound)
-            {
-                Step minLatStep = Steps.MinBy(step => step.Node1.Lat < step.Node2.Lat ? step.Node1.Lat : step.Node2.Lat);
-                Step minLonStep = Steps.MinBy(step => step.Node1.Lon < step.Node2.Lon ? step.Node1.Lon : step.Node2.Lon);
-                minLat = minLatStep.Node1.Lat < minLatStep.Node2.Lat ? minLatStep.Node1.Lat : minLatStep.Node2.Lat;
-                minLon = minLonStep.Node1.Lon < minLonStep.Node2.Lon ? minLonStep.Node1.Lon : minLonStep.Node2.Lon;
-            }
-            else
-            {
-                minLat = Graph.Nodes.MinBy(node => node.Value.Lat).Value.Lat;
-                minLon = Graph.Nodes.MinBy(node => node.Value.Lon).Value.Lon;
-            }
-            return new KeyValuePair<float, float>(minLat, minLon);
+            float minLat = Graph.Nodes.MinBy(node => node.Value.Lat).Value.Lat;
+            float minLon = Graph.Nodes.MinBy(node => node.Value.Lon).Value.Lon;
+            return new ValueTuple<float, float>(minLat, minLon);
         }
 
-        public KeyValuePair<float, float> MaxCoordinates()
+        public ValueTuple<float, float> MaxCoordinates()
         {
-            float maxLat, maxLon;
-            if (RouteFound)
-            {
-                Step maxLatStep = Steps.MaxBy(step => step.Node1.Lat > step.Node2.Lat ? step.Node1.Lat : step.Node2.Lat);
-                Step maxLonStep = Steps.MaxBy(step => step.Node1.Lon > step.Node2.Lon ? step.Node1.Lon : step.Node2.Lon);
-                maxLat = maxLatStep.Node1.Lat > maxLatStep.Node2.Lat ? maxLatStep.Node1.Lat : maxLatStep.Node2.Lat;
-                maxLon = maxLonStep.Node1.Lon > maxLonStep.Node2.Lon ? maxLonStep.Node1.Lon : maxLonStep.Node2.Lon;
-            }
-            else
-            {
-                maxLat = Graph.Nodes.MaxBy(node => node.Value.Lat).Value.Lat;
-                maxLon = Graph.Nodes.MaxBy(node => node.Value.Lon).Value.Lon;
-            }
-            return new KeyValuePair<float, float>(maxLat, maxLon);
+            float maxLat = Graph.Nodes.MaxBy(node => node.Value.Lat).Value.Lat;
+            float maxLon = Graph.Nodes.MaxBy(node => node.Value.Lon).Value.Lon;
+            return new ValueTuple<float, float>(maxLat, maxLon);
+        }
+
+        public override string ToString()
+        {
+            return $"{string.Join("\n", Steps)}\n" +
+                   $"Distance: {Distance:000000.00}m";
         }
     }
 

@@ -13,13 +13,15 @@ namespace astar
             Graph graph = Spiral(rl, startLat, startLon, regionSize);
             KeyValuePair<ulong, Node> startNode = graph.ClosestNodeToCoordinates(startLat, startLon);
             startNode.Value.PreviousIsFromStart = true;
-            startNode.Value.Previous = new KeyValuePair<ulong, float>(startNode.Key, 0f);
+            startNode.Value.PreviousNodeId = startNode.Key;
+            startNode.Value.Distance = 0f;
             
             Graph endRegion = Spiral(rl, endLat, endLon, regionSize);
             graph.ConcatGraph(endRegion);
             KeyValuePair<ulong, Node> endNode = graph.ClosestNodeToCoordinates(endLat, endLon);
             endNode.Value.PreviousIsFromStart = false;
-            endNode.Value.Previous = new KeyValuePair<ulong, float>(endNode.Key, 0f);
+            endNode.Value.PreviousNodeId = endNode.Key;
+            endNode.Value.Distance = 0f;
 
             logger?.Log(LogLevel.Information,
                 "From {0:00.00000}#{1:000.00000} to {2:00.00000}#{3:000.00000} Great-Circle {4:00000.00}km",
@@ -34,164 +36,78 @@ namespace astar
             while (toVisitStart.Count > 0 && toVisitEnd.Count > 0)
             {
                 logger?.LogDebug($"Length toVisit-Start: {toVisitStart.Count} -End: {toVisitEnd.Count}");
-                /*
-                 * FROM START
-                 */
                 ulong currentNodeStartId = toVisitStart.Dequeue();
-                Node? currentNodeStart;
-                if (!graph.ContainsNode(currentNodeStartId))
+                Node currentNodeStart = graph.Nodes[currentNodeStartId];
+                foreach ((ulong neighborId, ulong wayId) in currentNodeStart.Neighbors)
                 {
-                    Graph? newRegion = Graph.FromGraph(rl.LoadRegionFromNodeId(currentNodeStartId));
-                    if (newRegion is null)
+                    if (!graph.ContainsNode(neighborId))
+                        graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
+                    Node neighborNode = graph.Nodes[neighborId];
+                    
+                    if (neighborNode.PreviousIsFromStart is false)//Check if we found the opposite End
+                        return PathFound(graph, currentNodeStart, neighborNode, logger);
+                    
+                    float distance = (float)currentNodeStart.Distance! + (float)currentNodeStart.DistanceTo(neighborNode);
+                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
                     {
-                        logger?.LogError($"Could not load Region for Node {currentNodeStartId}");
-                        currentNodeStart = null;
+                        neighborNode.PreviousNodeId = currentNodeStartId;
+                        neighborNode.Distance = distance;
+                        neighborNode.PreviousIsFromStart = true;
+                        toVisitStart.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, endNode.Value));
                     }
-                    else
-                    {
-                        graph.ConcatGraph(newRegion);
-                        currentNodeStart = graph.Nodes[currentNodeStartId];
-                    }
-                }
-                else
-                    currentNodeStart = graph.Nodes[currentNodeStartId];
-                logger?.LogTrace($"Current Node Start: {currentNodeStartId} {currentNodeStart}");
-                if (currentNodeStart is not null)
-                {
-                    foreach ((ulong nodeId, ulong wayId) in currentNodeStart.Neighbors)
-                    {
-                        //TODO checks for way-stuff
-                        Node? neighbor;
-                        if (!graph.ContainsNode(nodeId))
-                        {
-                            Graph? newRegion = Graph.FromGraph(rl.LoadRegionFromNodeId(nodeId));
-                            if (newRegion is null)
-                            {
-                                logger?.LogError($"Could not load Region for Node {nodeId}");
-                                neighbor = null;
-                            }
-                            else
-                            {
-                                graph.ConcatGraph(newRegion);
-                                neighbor = Node.FromGraphNode(graph.Nodes[nodeId]);
-                            }
-                        }
-                        else
-                        {
-                            neighbor = graph.Nodes[nodeId];
-                        }
-
-                        if (neighbor is not null)
-                        {
-                            /*
-                             * IMPORTANT SHIT BELOW
-                             */
-                            if (neighbor.PreviousIsFromStart is false)//Check if we found the opposite End
-                                return PathFound(graph, currentNodeStart, neighbor);
-                            float distance = currentNodeStart.Previous!.Value.Value + (float)neighbor.DistanceTo(currentNodeStart);
-                            if (neighbor.Previous is null || neighbor.Previous.Value.Value > distance)
-                            {
-                                neighbor.Previous = new KeyValuePair<ulong, float>(currentNodeStartId, distance);
-                                neighbor.PreviousIsFromStart = true;
-                                toVisitStart.Enqueue(nodeId, NodeUtils.DistanceBetween(neighbor, endNode.Value));
-                            }
-                            logger?.LogTrace($"Neighbor {nodeId} {neighbor}");
-                        }
-                    }
+                    logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }
                 
-                /*
-                 * FROM END
-                 */
                 ulong currentNodeEndId = toVisitEnd.Dequeue();
-                Node? currentNodeEnd;
-                if (!graph.ContainsNode(currentNodeEndId))
+                Node currentNodeEnd = graph.Nodes[currentNodeEndId];
+                foreach ((ulong neighborId, ulong wayId) in currentNodeEnd.Neighbors)
                 {
-                    Graph? newRegion = Graph.FromGraph(rl.LoadRegionFromNodeId(currentNodeEndId));
-                    if (newRegion is null)
+                    if (!graph.ContainsNode(neighborId))
+                        graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
+                    Node neighborNode = graph.Nodes[neighborId];
+                    
+                    if (neighborNode.PreviousIsFromStart is true)//Check if we found the opposite End
+                        return PathFound(graph, neighborNode, currentNodeEnd, logger);
+                    
+                    float distance = (float)currentNodeStart.Distance! + (float)currentNodeStart.DistanceTo(neighborNode);
+                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
                     {
-                        logger?.LogError($"Could not load Region for Node {currentNodeEndId}");
-                        currentNodeEnd = null;
+                        neighborNode.PreviousNodeId = currentNodeEndId;
+                        neighborNode.Distance = distance;
+                        neighborNode.PreviousIsFromStart = false;
+                        toVisitEnd.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, startNode.Value));
                     }
-                    else
-                    {
-                        graph.ConcatGraph(newRegion);
-                        currentNodeEnd = graph.Nodes[currentNodeEndId];
-                    }
+                    logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }
-                else
-                    currentNodeEnd = graph.Nodes[currentNodeEndId];
-                logger?.LogTrace($"Current Node End: {currentNodeEndId} {currentNodeEnd}");
 
-                if (currentNodeEnd is not null)
-                {
-                    foreach ((ulong nodeId, ulong wayId) in currentNodeEnd.Neighbors)
-                    {
-                        //TODO checks for way-stuff
-                        Node? neighbor;
-                        if (!graph.ContainsNode(nodeId))
-                        {
-                            Graph? newRegion = Graph.FromGraph(rl.LoadRegionFromNodeId(nodeId));
-                            if (newRegion is null)
-                            {
-                                logger?.LogError($"Could not load Region for Node {nodeId}");
-                                neighbor = null;
-                            }
-                            else
-                            {
-                                graph.ConcatGraph(newRegion);
-                                neighbor = Node.FromGraphNode(graph.Nodes[nodeId]);
-                            }
-                        }
-                        else
-                        {
-                            neighbor = graph.Nodes[nodeId];
-                        }
-
-                        if (neighbor is not null)
-                        {
-                            /*
-                             * IMPORTANT SHIT BELOW
-                             */
-                            if (neighbor.PreviousIsFromStart is true)//Check if we found the opposite End
-                                return PathFound(graph, neighbor, currentNodeEnd);
-                            
-                            float distance = currentNodeEnd.Previous!.Value.Value + (float)neighbor.DistanceTo(currentNodeEnd);
-                            if (neighbor.Previous is null || neighbor.Previous.Value.Value > distance)
-                            {
-                                neighbor.Previous = new KeyValuePair<ulong, float>(currentNodeEndId, distance);
-                                neighbor.PreviousIsFromStart = false;
-                                toVisitEnd.Enqueue(nodeId, NodeUtils.DistanceBetween(neighbor, startNode.Value));
-                            }
-                            logger?.LogTrace($"Neighbor {nodeId} {neighbor}");
-                        }
-                    }
-                }
             }
             return new Route(graph, Array.Empty<Step>().ToList(), false);
         }
 
-        private static Route PathFound(Graph graph, Node fromStart, Node fromEnd)
+        private static Route PathFound(Graph graph, Node fromStart, Node fromEnd, ILogger? logger = null)
         {
+            logger?.LogInformation("Path found!");
             List<Step> path = new();
+            path.Add(new Step((float)NodeUtils.DistanceBetween(fromStart, fromEnd), fromStart, fromEnd));
             Node current = fromStart;
-            while (current.Previous is not null && current.Previous.Value.Value == 0f)
+            while (current.Distance != 0f)
             {
-                Step step = new((float)NodeUtils.DistanceBetween(graph.Nodes[current.Previous.Value.Key], current), graph.Nodes[current.Previous.Value.Key], current);
+                Step step = new((float)NodeUtils.DistanceBetween(graph.Nodes[(ulong)current.PreviousNodeId!], current), graph.Nodes[(ulong)current.PreviousNodeId!], current);
                 path.Add(step);
-                current = graph.Nodes[current.Previous.Value.Key];
+                current = graph.Nodes[(ulong)current.PreviousNodeId!];
             }
             path.Reverse();//Since we go from the middle backwards until here
-            path.Add(new Step((float)NodeUtils.DistanceBetween(fromStart, fromEnd), fromStart, fromEnd));
             current = fromEnd;
-            while (current.Previous is not null && current.Previous.Value.Value == 0f)
+            while (current.Distance != 0f)
             {
-                Step step = new((float)NodeUtils.DistanceBetween(graph.Nodes[current.Previous.Value.Key], current), current, graph.Nodes[current.Previous.Value.Key]);
+                Step step = new((float)NodeUtils.DistanceBetween(graph.Nodes[(ulong)current.PreviousNodeId!], current), current, graph.Nodes[(ulong)current.PreviousNodeId!]);
                 path.Add(step);
-                current = graph.Nodes[current.Previous.Value.Key];
+                current = graph.Nodes[(ulong)current.PreviousNodeId!];
             }
 
-            return new Route(graph, path, true);
+            Route r = new (graph, path, true);
+            logger?.LogInformation(r.ToString());
+            return r;
         }
 
         private static Graph Spiral(RegionLoader loader, float lat, float lon, float regionSize)

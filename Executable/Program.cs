@@ -63,12 +63,11 @@ if (arguments.TryGetValue(pathArg, out string[]? pathValue))
 
 Route route = Astar.FindPath(startLat, startLon, endLat, endLon, regionSize, importPath, logger);
 if(route.RouteFound)
-    Console.WriteLine($"{string.Join("\n", route.Steps)}\n" +
-                      $"Distance: {route.Distance:000000.00}m");
+    Console.WriteLine(route);
 else
     Console.WriteLine("No route found.");
 
-Console.WriteLine($"Visited Nodes: {route.Graph.Nodes.Values.Count(node => node.Previous is not null)}");
+Console.WriteLine($"Visited Nodes: {route.Graph.Nodes.Values.Count(node => node.PreviousNodeId is not null)}");
 
 
 void PrintUsage()
