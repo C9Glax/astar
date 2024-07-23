@@ -27,7 +27,7 @@
         {
             return $"{string.Join("\n", Steps)}\n" +
                    $"Distance: {Distance:000000.00}m\n" +
-                   $"Time: {Time:000000.00}";
+                   $"Time: {Time:hh\\:m\\:ss}";
         }
     }
 
