@@ -47,8 +47,8 @@ namespace astar
                     if (neighborNode.PreviousIsFromStart is false)//Check if we found the opposite End
                         return PathFound(graph, currentNodeStart, neighborNode, logger);
                     
-                    float distance = (float)currentNodeStart.Distance! + (float)currentNodeStart.DistanceTo(neighborNode);
-                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
+                    float distance = (currentNodeStart.Distance??float.MaxValue) + (float)currentNodeStart.DistanceTo(neighborNode);
+                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance && currentNodeStart.PreviousNodeId != neighborId)
                     {
                         neighborNode.PreviousNodeId = currentNodeStartId;
                         neighborNode.Distance = distance;
@@ -69,8 +69,8 @@ namespace astar
                     if (neighborNode.PreviousIsFromStart is true)//Check if we found the opposite End
                         return PathFound(graph, neighborNode, currentNodeEnd, logger);
                     
-                    float distance = (float)currentNodeStart.Distance! + (float)currentNodeStart.DistanceTo(neighborNode);
-                    if (neighborNode.PreviousNodeId is null || neighborNode.Distance > distance)
+                    float distance = (currentNodeStart.Distance??float.MaxValue) + (float)currentNodeStart.DistanceTo(neighborNode);
+                    if (neighborNode.PreviousIsFromStart is null || neighborNode.Distance > distance && currentNodeEnd.PreviousNodeId != neighborId)
                     {
                         neighborNode.PreviousNodeId = currentNodeEndId;
                         neighborNode.Distance = distance;
