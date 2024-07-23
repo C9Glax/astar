@@ -6,10 +6,11 @@ using OSM_Regions;
 
 namespace astar
 {
-    public static class Astar
+    public class Astar
     {
-        public static Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, string? importFolderPath = null,
-            ILogger? logger = null)
+        private static readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = new(1, 1.4f, 0, 0);
+        private static readonly ValueTuple<float, float, float, float> OptimizingWeights = new(1, 0, 0, 0.5f);
+        public static Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, float additionalExploration = 3, string? importFolderPath = null, ILogger? logger = null)
         {
             RegionLoader rl = new(regionSize, importFolderPath, logger: logger);
             Graph graph = Spiral(rl, startLat, startLon, regionSize);
@@ -37,33 +38,42 @@ namespace astar
             PriorityQueue<ulong, int> toVisitEnd = new();
             toVisitEnd.Enqueue(endNode.Key, 0);
 
+            ValueTuple<Node, Node>? meetingEnds = null;
             while (toVisitStart.Count > 0 && toVisitEnd.Count > 0)
             {
-                Route? route = null;
-                if (toVisitStart.Count >= toVisitEnd.Count && route is null)
+                if (toVisitStart.Count >= toVisitEnd.Count && meetingEnds is null)
                 {
-                    for(int i = 0; i < toVisitStart.Count / 10 && route is null; i++)
-                        route = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, endNode.Value, car, pathing, logger);
+                    for(int i = 0; i < toVisitStart.Count / 10 && meetingEnds is null; i++)
+                        meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, endNode.Value, car, DefaultPriorityWeights, pathing, logger);
                 }
-                if(route is null)
-                    route = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, endNode.Value, car, pathing, logger);
+                if(meetingEnds is null)
+                    meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, endNode.Value, car, DefaultPriorityWeights, pathing, logger);
                 
-                if (toVisitEnd.Count >= toVisitStart.Count && route is null)
+                if (toVisitEnd.Count >= toVisitStart.Count && meetingEnds is null)
                 {
-                    for(int i = 0; i < toVisitEnd.Count / 10 && route is null; i++)
-                        route = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, startNode.Value, car, pathing, logger);
+                    for(int i = 0; i < toVisitEnd.Count / 10 && meetingEnds is null; i++)
+                        meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, startNode.Value, car, DefaultPriorityWeights, pathing, logger);
                 }
-                if(route is null)
-                    route = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, startNode.Value, car, pathing, logger);
+                if(meetingEnds is null)
+                    meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, startNode.Value, car, DefaultPriorityWeights, pathing, logger);
 
-                if (route is not null)
-                    return route;
+                if (meetingEnds is not null)
+                    break;
                 logger?.LogDebug($"toVisit-Queues: {toVisitStart.Count} {toVisitStart.UnorderedItems.MinBy(i => i.Priority).Priority} {toVisitEnd.Count} {toVisitEnd.UnorderedItems.MinBy(i => i.Priority).Priority}");
             }
-            return new Route(graph, Array.Empty<Step>().ToList(), false);
+            if(meetingEnds is null)
+                return new Route(graph, Array.Empty<Step>().ToList(), false);
+
+            PriorityQueue<ulong, int> combinedQueue = toVisitStart;
+            while(toVisitEnd.TryDequeue(out ulong id, out int prio))
+                combinedQueue.Enqueue(id, prio);
+            ValueTuple<Node, Node>? newMeetingEnds = Optimize(additionalExploration, graph, combinedQueue, car, rl, priorityHelper, pathing, startNode.Value, endNode.Value, logger);
+            meetingEnds = newMeetingEnds ?? meetingEnds;
+
+            return PathFound(graph, meetingEnds!.Value.Item1, meetingEnds.Value.Item2, car, logger);
         }
 
-        private static Route? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, PathMeasure pathing = PathMeasure.Distance,  ILogger? logger = null)
+        private static ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing = PathMeasure.Distance, ILogger? logger = null)
         {
             ulong currentNodeId = toVisit.Dequeue();
             Node currentNode = graph.Nodes[currentNodeId];
@@ -91,9 +101,10 @@ namespace astar
                     continue;
                     
                 Node neighborNode = graph.Nodes[neighborId];
-                    
-                if (neighborNode.PreviousIsFromStart is not null && neighborNode.PreviousIsFromStart != fromStart)//Check if we found the opposite End
-                    return fromStart ? PathFound(graph, currentNode, neighborNode, car, logger) : PathFound(graph, neighborNode, currentNode, car, logger);
+
+                if (neighborNode.PreviousIsFromStart is not null &&
+                    neighborNode.PreviousIsFromStart != fromStart) //Check if we found the opposite End
+                    return fromStart ? new(currentNode, neighborNode) : new(neighborNode, currentNode);
 
                 float metric = (currentNode.Metric ?? float.MaxValue) + (pathing is PathMeasure.Distance
                     ? (float)currentNode.DistanceTo(neighborNode)
@@ -103,17 +114,36 @@ namespace astar
                     neighborNode.PreviousNodeId = currentNodeId;
                     neighborNode.Metric = metric;
                     neighborNode.PreviousIsFromStart = fromStart;
-                    toVisit.Enqueue(neighborId, priorityHelper.CalculatePriority(currentNode, neighborNode, goalNode, speed));
+                    toVisit.Enqueue(neighborId,
+                        priorityHelper.CalculatePriority(currentNode, neighborNode, goalNode, speed, ratingWeights));
                 }
                 logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
             }
 
             return null;
         }
+
+        private static ValueTuple<Node, Node>? Optimize(float additionalExploration, Graph graph, PriorityQueue<ulong, int> combinedQueue, bool car, RegionLoader rl, PriorityHelper priorityHelper, PathMeasure pathing, Node startNode, Node goalNode, ILogger? logger = null)
+        {
+            int currentPathLength = graph.Nodes.Values.Count(node => node.PreviousNodeId is not null);
+            int optimizeAfterFound = (int)(currentPathLength * additionalExploration); //Check another x% of unexplored Paths.
+            logger?.LogInformation($"Path found (explored {currentPathLength} Nodes). Optimizing route. (exploring {optimizeAfterFound} additional Nodes)");
+            ValueTuple<Node, Node>? newMeetingEnds = null;
+            while (optimizeAfterFound-- > 0 && combinedQueue.Count > 0)
+            {
+                ulong nodeId = combinedQueue.Peek();
+                Node node = graph.Nodes[nodeId];
+                bool fromStart = (bool)node.PreviousIsFromStart!;
+                newMeetingEnds = ExploreSide(fromStart, graph, combinedQueue, rl, priorityHelper, fromStart ? goalNode : startNode, car, OptimizingWeights, pathing, logger);
+            }
+
+            return newMeetingEnds;
+        }
         
         private static Route PathFound(Graph graph, Node fromStart, Node fromEnd, bool car = true, ILogger? logger = null)
         {
             logger?.LogInformation("Path found!");
+            
             List<Step> path = new();
             OSM_Graph.Way toNeighbor = graph.Ways[fromStart.Neighbors.First(n => graph.Nodes[n.Key] == fromEnd).Value.Key];
             path.Add(new Step(fromStart, fromEnd, (float)fromStart.DistanceTo(fromEnd), SpeedHelper.GetSpeed(toNeighbor, car)));
