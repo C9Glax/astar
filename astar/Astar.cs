@@ -85,9 +85,9 @@ namespace astar
                 if(!way.AccessPermitted())
                     continue;
                 
-                if(wayId.Value && way.GetDirection() == (fromStart ? WayDirection.Forwards : WayDirection.Backwards) && car)
+                if(wayId.Value && way.GetDirection() == (fromStart ? WayDirection.Backwards : WayDirection.Forwards) && car)
                     continue;
-                if(!wayId.Value && way.GetDirection() == (fromStart ? WayDirection.Backwards : WayDirection.Forwards) && car)
+                if(!wayId.Value && way.GetDirection() == (fromStart ? WayDirection.Forwards : WayDirection.Backwards) && car)
                     continue;
                     
                 Node neighborNode = graph.Nodes[neighborId];
