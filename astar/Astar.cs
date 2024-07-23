@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using astar.PathingHelper;
+using Graph;
+using Microsoft.Extensions.Logging;
 using Graph.Utils;
 using OSM_Regions;
 
@@ -6,19 +8,19 @@ namespace astar
 {
     public static class Astar
     {
-        public static Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, string? importFolderPath = null,
+        public static Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, string? importFolderPath = null,
             ILogger? logger = null)
         {
             RegionLoader rl = new(regionSize, importFolderPath, logger: logger);
             Graph graph = Spiral(rl, startLat, startLon, regionSize);
-            KeyValuePair<ulong, Node> startNode = graph.ClosestNodeToCoordinates(startLat, startLon);
+            KeyValuePair<ulong, Node> startNode = graph.ClosestNodeToCoordinates(startLat, startLon, car);
             startNode.Value.PreviousIsFromStart = true;
             startNode.Value.PreviousNodeId = startNode.Key;
             startNode.Value.Distance = 0f;
             
             Graph endRegion = Spiral(rl, endLat, endLon, regionSize);
             graph.ConcatGraph(endRegion);
-            KeyValuePair<ulong, Node> endNode = graph.ClosestNodeToCoordinates(endLat, endLon);
+            KeyValuePair<ulong, Node> endNode = graph.ClosestNodeToCoordinates(endLat, endLon, car);
             endNode.Value.PreviousIsFromStart = false;
             endNode.Value.PreviousNodeId = endNode.Key;
             endNode.Value.Distance = 0f;
@@ -42,6 +44,16 @@ namespace astar
                 {
                     if (!graph.ContainsNode(neighborId))
                         graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
+                    if (!graph.ContainsWay(wayId))
+                    {
+                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId))
+                            graph.ConcatGraph(Graph.FromGraph(g));
+                    }
+
+                    Way way = graph.Ways[wayId];
+                    byte speed = SpeedHelper.GetSpeed(way, car);
+                    if(speed < 1)
+                        continue;
                     Node neighborNode = graph.Nodes[neighborId];
                     
                     if (neighborNode.PreviousIsFromStart is false)//Check if we found the opposite End
@@ -53,7 +65,7 @@ namespace astar
                         neighborNode.PreviousNodeId = currentNodeStartId;
                         neighborNode.Distance = distance;
                         neighborNode.PreviousIsFromStart = true;
-                        toVisitStart.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, endNode.Value));
+                        toVisitStart.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, endNode.Value) / speed);
                     }
                     logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }
@@ -64,6 +76,16 @@ namespace astar
                 {
                     if (!graph.ContainsNode(neighborId))
                         graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
+                    if (!graph.ContainsWay(wayId))
+                    {
+                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId))
+                            graph.ConcatGraph(Graph.FromGraph(g));
+                    }
+                    
+                    Way way = graph.Ways[wayId];
+                    byte speed = SpeedHelper.GetSpeed(way, car);
+                    if(speed < 1)
+                        continue;
                     Node neighborNode = graph.Nodes[neighborId];
                     
                     if (neighborNode.PreviousIsFromStart is true)//Check if we found the opposite End
@@ -75,7 +97,7 @@ namespace astar
                         neighborNode.PreviousNodeId = currentNodeEndId;
                         neighborNode.Distance = distance;
                         neighborNode.PreviousIsFromStart = false;
-                        toVisitEnd.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, startNode.Value));
+                        toVisitEnd.Enqueue(neighborId, NodeUtils.DistanceBetween(neighborNode, startNode.Value) / speed);
                     }
                     logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
                 }

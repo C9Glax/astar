@@ -1,4 +1,5 @@
-﻿using Graph;
+﻿using astar.PathingHelper;
+using Graph;
 
 namespace astar;
 
@@ -49,9 +50,9 @@ public class Graph
         return Ways.ContainsKey(wayId);
     }
 
-    public KeyValuePair<ulong, Node> ClosestNodeToCoordinates(float lat, float lon)
+    public KeyValuePair<ulong, Node> ClosestNodeToCoordinates(float lat, float lon, bool car = true)
     {
-        return Nodes.MinBy(n => n.Value.DistanceTo(lat, lon));
+        return Nodes.Where(n => n.Value.Neighbors.Values.Any(wayId => SpeedHelper.GetSpeed(Ways[wayId], car) > 0)).MinBy(n => n.Value.DistanceTo(lat, lon));
     }
 
     public override string ToString()

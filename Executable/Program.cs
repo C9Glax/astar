@@ -61,7 +61,7 @@ if (arguments.TryGetValue(pathArg, out string[]? pathValue))
     converter.SplitOsmExportIntoRegionFiles(pathValue[0]);
 }
 
-Route route = Astar.FindPath(startLat, startLon, endLat, endLon, regionSize, importPath, logger);
+Route route = Astar.FindPath(startLat, startLon, endLat, endLon, regionSize, true, importPath, logger);
 if(route.RouteFound)
     Console.WriteLine(route);
 else
