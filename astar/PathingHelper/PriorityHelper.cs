@@ -20,6 +20,6 @@ public class PriorityHelper(double totalDistance, byte maxSpeed)
         //double angleRating = Math.Abs((180 - angle) / 180) * 100;
         double speedRating = speed * 1.0 / _maxSpeed * 100;
 
-        return 350 - (int)(distanceRating * 2 + speedRating * 1.5);
+        return 300 - (int)(distanceRating * 2 + speedRating * 1);
     }
 }
