@@ -8,7 +8,7 @@ namespace astar
 {
     public class Astar(ValueTuple<float, float, float, float>? priorityWeights = null, ValueTuple<float, float, float, float>? optimizingWeights = null, int? explorationDistance = null, int? explorationMultiplier = null)
     {
-        private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(1, 1.4f, 0, 0);
+        private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(0.75f, 1f, 0.1f, 0);
         private readonly ValueTuple<float, float, float, float> OptimizingWeights = optimizingWeights ?? new(0, 0.07f, 0, 0);
         private int ExplorationDistanceFromRoute = explorationDistance ?? 1200;
         private int ExplorationMultiplier = explorationMultiplier ?? 65;
