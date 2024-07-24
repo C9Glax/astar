@@ -6,11 +6,12 @@ using OSM_Regions;
 
 namespace astar
 {
-    public class Astar(ValueTuple<float, float, float, float>? optimizingWeights = null, int? explorationDistance = null)
+    public class Astar(ValueTuple<float, float, float, float>? optimizingWeights = null, int? explorationDistance = null, int? explorationMultiplier = null)
     {
         private static readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = new(1, 1.4f, 0, 0);
-        private readonly ValueTuple<float, float, float, float> OptimizingWeights = optimizingWeights ?? new(1, 0, -0.2f, 0);
+        private readonly ValueTuple<float, float, float, float> OptimizingWeights = optimizingWeights ?? new(0, 0.07f, 0, 0);
         private int ExplorationDistanceFromRoute = explorationDistance ?? 200;
+        private int ExplorationMultiplier = explorationMultiplier ?? 65;
         
         public Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, float additionalExploration = 3, string? importFolderPath = null, ILogger? logger = null)
         {
