@@ -44,21 +44,27 @@ namespace astar
             ValueTuple<Node, Node>? meetingEnds = null;
             while (toVisitStart.Count > 0 && toVisitEnd.Count > 0)
             {
+                ulong closestEndNodeId = toVisitEnd.UnorderedItems
+                    .MinBy(n => graph.Nodes[n.Element].DistanceTo(startNode.Value)).Element;
+                Node closestEndNode = graph.Nodes[closestEndNodeId];
                 if (toVisitStart.Count >= toVisitEnd.Count && meetingEnds is null)
                 {
                     for(int i = 0; i < toVisitStart.Count / 10 && meetingEnds is null; i++)
-                        meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, endNode.Value, car, DefaultPriorityWeights, pathing, logger);
+                        meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
                 }
                 if(meetingEnds is null)
-                    meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, endNode.Value, car, DefaultPriorityWeights, pathing, logger);
+                    meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
                 
+                ulong closestStartNodeId = toVisitStart.UnorderedItems
+                    .MinBy(n => graph.Nodes[n.Element].DistanceTo(endNode.Value)).Element;
+                Node closestStartNode = graph.Nodes[closestStartNodeId];
                 if (toVisitEnd.Count >= toVisitStart.Count && meetingEnds is null)
                 {
                     for(int i = 0; i < toVisitEnd.Count / 10 && meetingEnds is null; i++)
-                        meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, startNode.Value, car, DefaultPriorityWeights, pathing, logger);
+                        meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
                 }
                 if(meetingEnds is null)
-                    meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, startNode.Value, car, DefaultPriorityWeights, pathing, logger);
+                    meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
 
                 if (meetingEnds is not null)
                     break;
