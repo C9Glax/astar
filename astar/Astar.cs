@@ -109,6 +109,8 @@ namespace astar
                     continue;
                 if(!way.AccessPermitted())
                     continue;
+                if (car && !way.IsPriorityRoad())
+                    speed = (byte)(speed * 0.75f);
                 
                 if(wayId.Value && way.GetDirection() == (fromStart ? WayDirection.Backwards : WayDirection.Forwards) && car)
                     continue;
