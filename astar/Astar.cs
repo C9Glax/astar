@@ -30,7 +30,7 @@ namespace astar
             endNode.Value.Metric = 0f;
 
             double totalDistance = NodeUtils.DistanceBetween(startNode.Value, endNode.Value);
-            PriorityHelper priorityHelper = new(totalDistance, SpeedHelper.GetMaxSpeed(car));
+            PriorityHelper priorityHelper = new(totalDistance, SpeedHelper.GetTheoreticalMaxSpeed(car));
 
             logger?.Log(LogLevel.Information,
                 "From {0:00.00000}#{1:000.00000} to {2:00.00000}#{3:000.00000} Great-Circle {4:00000.00}km",

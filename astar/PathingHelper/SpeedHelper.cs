@@ -13,7 +13,7 @@ internal static class SpeedHelper
         return car ? SpeedCar[highwayType] : SpeedPedestrian[highwayType];
     }
 
-    public static byte GetMaxSpeed(bool car = true)
+    public static byte GetTheoreticalMaxSpeed(bool car = true)
     {
         return car ? SpeedCar.MaxBy(s => s.Value).Value : SpeedPedestrian.MaxBy(s => s.Value).Value;
     }
