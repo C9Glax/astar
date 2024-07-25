@@ -8,7 +8,7 @@ internal static class SpeedHelper
     {
         byte maxspeed = way.GetMaxSpeed();
         if (maxspeed != 0)
-            return maxspeed;
+            return (byte)(maxspeed * 0.85);
         HighwayType highwayType = way.GetHighwayType();
         return car ? SpeedCar[highwayType] : SpeedPedestrian[highwayType];
     }
