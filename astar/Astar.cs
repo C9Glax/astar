@@ -49,7 +49,7 @@ namespace astar
                 Node closestEndNode = graph.Nodes[closestEndNodeId];
                 if (toVisitStart.Count >= toVisitEnd.Count && meetingEnds is null)
                 {
-                    for(int i = 0; i < toVisitStart.Count / 10 && meetingEnds is null; i++)
+                    for(int i = 0; i < Math.Min(toVisitStart.Count * 0.5, 50) && meetingEnds is null; i++)
                         meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
                 }
                 if(meetingEnds is null)
@@ -60,7 +60,7 @@ namespace astar
                 Node closestStartNode = graph.Nodes[closestStartNodeId];
                 if (toVisitEnd.Count >= toVisitStart.Count && meetingEnds is null)
                 {
-                    for(int i = 0; i < toVisitEnd.Count / 10 && meetingEnds is null; i++)
+                    for(int i = 0; i < Math.Min(toVisitEnd.Count * 0.5, 50) && meetingEnds is null; i++)
                         meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
                 }
                 if(meetingEnds is null)
