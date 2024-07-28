@@ -52,8 +52,6 @@ namespace astar
                     for(int i = 0; i < Math.Min(toVisitStart.Count * 0.5, 50) && meetingEnds is null; i++)
                         meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
                 }
-                if(meetingEnds is null)
-                    meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
                 
                 ulong closestStartNodeId = toVisitStart.UnorderedItems
                     .MinBy(n => graph.Nodes[n.Element].DistanceTo(endNode.Value)).Element;
@@ -63,8 +61,6 @@ namespace astar
                     for(int i = 0; i < Math.Min(toVisitEnd.Count * 0.5, 50) && meetingEnds is null; i++)
                         meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
                 }
-                if(meetingEnds is null)
-                    meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
 
                 if (meetingEnds is not null)
                     break;
