@@ -95,6 +95,7 @@ namespace astar
                     graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
                 if (!graph.ContainsWay(wayId.Key))
                 {
+                    logger?.LogDebug("Loading way... This will be slow.");
                     foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId.Key))
                         graph.ConcatGraph(Graph.FromGraph(g));
                 }
