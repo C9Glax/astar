@@ -18,7 +18,7 @@ internal static class SpeedHelper
         return car ? SpeedCar.MaxBy(s => s.Value).Value : SpeedPedestrian.MaxBy(s => s.Value).Value;
     }
 
-    private static Dictionary<HighwayType, byte> SpeedPedestrian = new() {
+    private static readonly Dictionary<HighwayType, byte> SpeedPedestrian = new() {
         { HighwayType.NONE, 0 },
         { HighwayType.motorway, 0 },
         { HighwayType.trunk, 0 },
@@ -50,7 +50,7 @@ internal static class SpeedHelper
         { HighwayType.construction, 0 }
     };
 
-    private static Dictionary<HighwayType, byte> SpeedCar = new() {
+    private static readonly Dictionary<HighwayType, byte> SpeedCar = new() {
         { HighwayType.NONE, 0 },
         { HighwayType.motorway, 120 },
         { HighwayType.trunk, 80 },
