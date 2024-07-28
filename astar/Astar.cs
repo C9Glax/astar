@@ -10,10 +10,10 @@ namespace astar
     {
         private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(0.75f, 1f, 0.1f, 0);
         private readonly ValueTuple<float, float, float, float> OptimizingWeights = optimizingWeights ?? new(0, 0.07f, 0, 0);
-        private int ExplorationDistanceFromRoute = explorationDistance ?? 1200;
-        private int ExplorationMultiplier = explorationMultiplier ?? 65;
+        private readonly int _explorationDistanceFromRoute = explorationDistance ?? 1200;
+        private readonly int _explorationMultiplier = explorationMultiplier ?? 65;
         
-        public Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, float additionalExploration = 3, string? importFolderPath = null, ILogger? logger = null)
+        public Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, string? importFolderPath = null, ILogger? logger = null)
         {
             RegionLoader rl = new(regionSize, importFolderPath, logger: logger);
             Graph graph = Spiral(rl, startLat, startLon, regionSize);
@@ -77,12 +77,12 @@ namespace astar
             Dictionary<ulong, int> routeQueue = toVisitStart.UnorderedItems.Select(l => l.Element).Union(toVisitEnd.UnorderedItems.Select(l => l.Element)).Where(id =>
             {
                 Node p = graph.Nodes[id];
-                return routeNodes.Any(route => route.DistanceTo(p) < ExplorationDistanceFromRoute);
+                return routeNodes.Any(route => route.DistanceTo(p) < _explorationDistanceFromRoute);
             }).ToDictionary(id => id, _ => int.MinValue);
             PriorityQueue<ulong, int> combinedQueue = new();
             foreach ((ulong key, int value) in routeQueue)
                 combinedQueue.Enqueue(key, value);
-            ValueTuple<Node, Node>? newMeetingEnds = Optimize(additionalExploration, graph, combinedQueue, car, rl, priorityHelper, pathing, startNode.Value, endNode.Value, logger);
+            ValueTuple<Node, Node>? newMeetingEnds = Optimize(graph, combinedQueue, car, rl, priorityHelper, pathing, startNode.Value, endNode.Value, logger);
             meetingEnds = newMeetingEnds ?? meetingEnds;
 
             return PathFound(graph, meetingEnds!.Value.Item1, meetingEnds.Value.Item2, car, logger);
@@ -140,10 +140,10 @@ namespace astar
             return null;
         }
 
-        private ValueTuple<Node, Node>? Optimize(float additionalExploration, Graph graph, PriorityQueue<ulong, int> combinedQueue, bool car, RegionLoader rl, PriorityHelper priorityHelper, PathMeasure pathing, Node startNode, Node goalNode, ILogger? logger = null)
+        private ValueTuple<Node, Node>? Optimize(Graph graph, PriorityQueue<ulong, int> combinedQueue, bool car, RegionLoader rl, PriorityHelper priorityHelper, PathMeasure pathing, Node startNode, Node goalNode, ILogger? logger = null)
         {
             int currentPathLength = graph.Nodes.Values.Count(node => node.PreviousNodeId is not null);
-            int optimizeAfterFound = (int)(combinedQueue.Count * additionalExploration); //Check another x% of unexplored Paths.
+            int optimizeAfterFound = (int)(combinedQueue.Count * _explorationMultiplier); //Check another x% of unexplored Paths.
             logger?.LogInformation($"Path found (explored {currentPathLength} Nodes). Optimizing route. (exploring {optimizeAfterFound} additional Nodes)");
             ValueTuple<Node, Node>? newMeetingEnds = null;
             while (optimizeAfterFound-- > 0 && combinedQueue.Count > 0)
