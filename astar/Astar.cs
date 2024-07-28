@@ -84,7 +84,7 @@ namespace astar
             return PathFound(graph, meetingEnds!.Value.Item1, meetingEnds.Value.Item2, car, logger);
         }
 
-        private static ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing = PathMeasure.Distance, ILogger? logger = null)
+        private static ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing, ILogger? logger = null)
         {
             ulong currentNodeId = toVisit.Dequeue();
             Node currentNode = graph.Nodes[currentNodeId];
