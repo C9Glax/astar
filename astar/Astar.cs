@@ -67,7 +67,6 @@ namespace astar
             if(meetingEnds is null)
                 return new Route(graph, Array.Empty<Step>().ToList(), false);
 
-            //List<Node> routeNodes = PathFound(graph, meetingEnds.Value.Item1, meetingEnds.Value.Item2, car).Steps.Select(s => s.Node1).ToList();
             Queue<ulong> routeQueue = new();
             foreach (ulong id in toVisitStart.UnorderedItems.Select(l => l.Element)
                          .Union(toVisitEnd.UnorderedItems.Select(l => l.Element)))
@@ -87,14 +86,7 @@ namespace astar
             logger?.LogDebug($"Distance to goal {currentNode.DistanceTo(goalNode):00000.00}m");
             foreach ((ulong neighborId, KeyValuePair<ulong, bool> wayId) in currentNode.Neighbors)
             {
-                if (!graph.ContainsNode(neighborId))
-                    graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
-                if (!graph.ContainsWay(wayId.Key))
-                {
-                    logger?.LogDebug("Loading way... This will be slow.");
-                    foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId.Key))
-                        graph.ConcatGraph(Graph.FromGraph(g));
-                }
+                LoadNeighbor(graph, neighborId, wayId.Key, rl, logger);
                     
                 OSM_Graph.Way way = graph.Ways[wayId.Key];
                 byte speed = SpeedHelper.GetSpeed(way, car);
@@ -126,19 +118,6 @@ namespace astar
             return null;
         }
 
-        private static bool IsNeighborReachable(byte speed, bool wayDirection, bool fromStart, OSM_Graph.Way way, bool car)
-        {
-            if(speed < 1)
-                return false;
-            if(!way.AccessPermitted())
-                return false;
-            if(wayDirection && way.GetDirection() == (fromStart ? WayDirection.Backwards : WayDirection.Forwards) && car)
-                return false;
-            if(!wayDirection && way.GetDirection() == (fromStart ? WayDirection.Forwards : WayDirection.Backwards) && car)
-                return false;
-            return true;
-        }
-
         private ValueTuple<Node, Node>? Optimize(Graph graph, Queue<ulong> combinedQueue, bool car, RegionLoader rl, PathMeasure pathing, ILogger? logger = null)
         {
             int currentPathLength = graph.Nodes.Values.Count(node => node.PreviousNodeId is not null);
@@ -152,15 +131,8 @@ namespace astar
                 bool fromStart = (bool)currentNode.PreviousIsFromStart!;
                 foreach ((ulong neighborId, KeyValuePair<ulong, bool> wayId) in currentNode.Neighbors)
                 {
-                    if (!graph.ContainsNode(neighborId))
-                        graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
-                    if (!graph.ContainsWay(wayId.Key))
-                    {
-                        logger?.LogDebug("Loading way... This will be slow.");
-                        foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId.Key))
-                            graph.ConcatGraph(Graph.FromGraph(g));
-                    }
-                        
+                    LoadNeighbor(graph, neighborId, wayId.Key, rl, logger);
+                    
                     OSM_Graph.Way way = graph.Ways[wayId.Key];
                     byte speed = SpeedHelper.GetSpeed(way, car);
                     if(!IsNeighborReachable(speed, wayId.Value, fromStart, way, car))
@@ -226,6 +198,32 @@ namespace astar
             Route r = new (graph, path, true);
             logger?.LogInformation(r.ToString());
             return r;
+        }
+
+        private static bool IsNeighborReachable(byte speed, bool wayDirection, bool fromStart, OSM_Graph.Way way, bool car)
+        {
+            if(speed < 1)
+                return false;
+            if(!way.AccessPermitted())
+                return false;
+            if(wayDirection && way.GetDirection() == (fromStart ? WayDirection.Backwards : WayDirection.Forwards) && car)
+                return false;
+            if(!wayDirection && way.GetDirection() == (fromStart ? WayDirection.Forwards : WayDirection.Backwards) && car)
+                return false;
+            return true;
+        }
+
+        private static void LoadNeighbor(Graph graph, ulong neighborId, ulong wayId, RegionLoader rl, ILogger? logger = null)
+        {
+            
+            if (!graph.ContainsNode(neighborId))
+                graph.ConcatGraph(Graph.FromGraph(rl.LoadRegionFromNodeId(neighborId)));
+            if (!graph.ContainsWay(wayId))
+            {
+                logger?.LogDebug("Loading way... This will be slow.");
+                foreach (global::Graph.Graph? g in rl.LoadRegionsFromWayId(wayId))
+                    graph.ConcatGraph(Graph.FromGraph(g));
+            }
         }
 
         private static Graph Spiral(RegionLoader loader, float lat, float lon, float regionSize)
