@@ -9,7 +9,7 @@ namespace astar
     public class Astar(ValueTuple<float, float, float, float>? priorityWeights = null, int? explorationMultiplier = null, float? nonPriorityRoadSpeedPenalty = null)
     {
         private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(0.7f, 1.08f, 0, 0);
-        private readonly int _explorationMultiplier = explorationMultiplier ?? 200;
+        private readonly int _explorationMultiplier = explorationMultiplier ?? 150;
         private readonly float _nonPriorityRoadSpeedPenalty = nonPriorityRoadSpeedPenalty ?? 0.9f;
         
         public Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, string? importFolderPath = null, ILogger? logger = null)
