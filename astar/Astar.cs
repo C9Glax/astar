@@ -94,8 +94,7 @@ namespace astar
                 
                 Node neighborNode = graph.Nodes[neighborId];
 
-                if (neighborNode.PreviousIsFromStart is not null &&
-                    neighborNode.PreviousIsFromStart != fromStart) //Check if we found the opposite End
+                if (neighborNode.PreviousIsFromStart == !fromStart) //Check if we found the opposite End
                     return fromStart ? new(currentNode, neighborNode) : new(neighborNode, currentNode);
 
                 float metric = (currentNode.Metric ?? float.MaxValue) + (pathing is PathMeasure.Distance
@@ -109,7 +108,6 @@ namespace astar
                     toVisit.Enqueue(neighborId,
                         priorityHelper.CalculatePriority(currentNode, neighborNode, goalNode, speed, ratingWeights));
                 }
-                logger?.LogTrace($"Neighbor {neighborId} {neighborNode}");
             }
 
             return null;
