@@ -6,15 +6,16 @@ using OSM_Regions;
 
 namespace astar
 {
-    public class Astar(ValueTuple<float, float, float, float>? priorityWeights = null, int? explorationMultiplier = null, float? nonPriorityRoadSpeedPenalty = null)
+    public class Astar(ValueTuple<float, float, float, float>? priorityWeights = null, int? explorationMultiplier = null, float? nonPriorityRoadSpeedPenalty = null, RegionLoader? regionLoader = null)
     {
-        private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(.6f, 1, 0, 0);
-        private readonly int _explorationMultiplier = explorationMultiplier ?? 1500;
-        private readonly float _nonPriorityRoadSpeedPenalty = nonPriorityRoadSpeedPenalty ?? 0.75f;
+        private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(0.6f, 1.05f, 0, 0);
+        private readonly int _explorationMultiplier = explorationMultiplier ?? 120;
+        private readonly float _nonPriorityRoadSpeedPenalty = nonPriorityRoadSpeedPenalty ?? 0.85f;
+        private RegionLoader? rl = regionLoader;
         
         public Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, string? importFolderPath = null, ILogger? logger = null)
         {
-            RegionLoader rl = new(regionSize, importFolderPath, logger: logger);
+            rl ??= new(regionSize, importFolderPath, logger: logger);
             Graph graph = Spiral(rl, startLat, startLon, regionSize);
             Graph endRegion = Spiral(rl, endLat, endLon, regionSize);
             graph.ConcatGraph(endRegion);
@@ -65,12 +66,13 @@ namespace astar
                 return new Route(graph, Array.Empty<Step>().ToList(), false);
 
             Queue<ulong> routeQueue = new();
-            foreach (ulong id in toVisitStart.UnorderedItems.Select(l => l.Element)
-                         .Union(toVisitEnd.UnorderedItems.Select(l => l.Element)))
+            toVisitStart.EnqueueRange(toVisitEnd.UnorderedItems);
+            while(toVisitStart.Count > 0)
             {
-                routeQueue.Enqueue(id);
+                routeQueue.Enqueue(toVisitStart.Dequeue());
             }
-            ValueTuple<Node, Node>? newMeetingEnds = Optimize(graph, routeQueue, car, rl, pathing, logger);
+            int optimizeAfterFound = graph.Nodes.Count(n => n.Value.PreviousNodeId is not null) * _explorationMultiplier; //Check another x% of unexplored Paths.
+            ValueTuple<Node, Node>? newMeetingEnds = Optimize(graph, routeQueue, optimizeAfterFound, car, rl, pathing, logger);
             meetingEnds = newMeetingEnds ?? meetingEnds;
 
             return PathFound(graph, meetingEnds!.Value.Item1, meetingEnds.Value.Item2, car, logger);
@@ -113,10 +115,9 @@ namespace astar
             return null;
         }
 
-        private ValueTuple<Node, Node>? Optimize(Graph graph, Queue<ulong> combinedQueue, bool car, RegionLoader rl, PathMeasure pathing, ILogger? logger = null)
+        private ValueTuple<Node, Node>? Optimize(Graph graph, Queue<ulong> combinedQueue, int optimizeAfterFound, bool car, RegionLoader rl, PathMeasure pathing, ILogger? logger = null)
         {
             int currentPathLength = graph.Nodes.Values.Count(node => node.PreviousNodeId is not null);
-            int optimizeAfterFound = (int)(combinedQueue.Count * _explorationMultiplier); //Check another x% of unexplored Paths.
             logger?.LogInformation($"Path found (explored {currentPathLength} Nodes). Optimizing route. (exploring {optimizeAfterFound} additional Nodes)");
             ValueTuple<Node, Node>? newMeetingEnds = null;
             while (optimizeAfterFound-- > 0 && combinedQueue.Count > 0)
