@@ -6,10 +6,11 @@ using OSM_Regions;
 
 namespace astar
 {
-    public class Astar(ValueTuple<float, float, float, float>? priorityWeights = null, int? explorationMultiplier = null)
+    public class Astar(ValueTuple<float, float, float, float>? priorityWeights = null, int? explorationMultiplier = null, float? nonPriorityRoadSpeedPenalty = null)
     {
         private readonly ValueTuple<float, float, float, float> DefaultPriorityWeights = priorityWeights ?? new(0.7f, 1.08f, 0, 0);
         private readonly int _explorationMultiplier = explorationMultiplier ?? 200;
+        private readonly float _nonPriorityRoadSpeedPenalty = nonPriorityRoadSpeedPenalty ?? 0.9f;
         
         public Route FindPath(float startLat, float startLon, float endLat, float endLon, float regionSize, bool car = true, PathMeasure pathing = PathMeasure.Distance, string? importFolderPath = null, ILogger? logger = null)
         {
@@ -79,7 +80,7 @@ namespace astar
             return PathFound(graph, meetingEnds!.Value.Item1, meetingEnds.Value.Item2, car, logger);
         }
 
-        private static ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing, ILogger? logger = null)
+        private ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing, ILogger? logger = null)
         {
             ulong currentNodeId = toVisit.Dequeue();
             Node currentNode = graph.Nodes[currentNodeId];
@@ -93,7 +94,7 @@ namespace astar
                 if(!IsNeighborReachable(speed, wayId.Value, fromStart, way, car))
                     continue;
                 if (car && !way.IsPriorityRoad())
-                    speed = (byte)(speed * 0.75f);
+                    speed = (byte)(speed * _nonPriorityRoadSpeedPenalty);
                 
                 Node neighborNode = graph.Nodes[neighborId];
 
@@ -138,7 +139,7 @@ namespace astar
                     if(!IsNeighborReachable(speed, wayId.Value, fromStart, way, car))
                         continue;
                     if (car && !way.IsPriorityRoad())
-                        speed = (byte)(speed * 0.75f);
+                        speed = (byte)(speed * _nonPriorityRoadSpeedPenalty);
                     
                     Node neighborNode = graph.Nodes[neighborId];
 
