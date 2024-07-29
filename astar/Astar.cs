@@ -48,14 +48,14 @@ namespace astar
                 {
                     ulong closestEndNodeId = toVisitEnd.UnorderedItems.MinBy(node => graph.Nodes[node.Element].DistanceTo(graph.Nodes[toVisitStart.Peek()])).Element;
                     Node closestEndNode = graph.Nodes[closestEndNodeId];
-                    meetingEnds = ExploreSide(true, graph, toVisitStart, rl, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
+                    meetingEnds = ExploreSide(true, graph, toVisitStart, priorityHelper, closestEndNode, car, DefaultPriorityWeights, pathing, logger);
                 }
                 
                 for (int i = 0; i < Math.Min(toVisitEnd.Count * 0.5, 50) && meetingEnds is null; i++)
                 {
                     ulong closestStartNodeId = toVisitStart.UnorderedItems.MinBy(node => graph.Nodes[node.Element].DistanceTo(graph.Nodes[toVisitEnd.Peek()])).Element;
                     Node closestStartNode = graph.Nodes[closestStartNodeId];
-                    meetingEnds = ExploreSide(false, graph, toVisitEnd, rl, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
+                    meetingEnds = ExploreSide(false, graph, toVisitEnd, priorityHelper, closestStartNode, car, DefaultPriorityWeights, pathing, logger);
                 }
 
                 if (meetingEnds is not null)
@@ -72,20 +72,26 @@ namespace astar
                 routeQueue.Enqueue(toVisitStart.Dequeue());
             }
             int optimizeAfterFound = graph.Nodes.Count(n => n.Value.PreviousNodeId is not null) * _explorationMultiplier; //Check another x% of unexplored Paths.
-            ValueTuple<Node, Node>? newMeetingEnds = Optimize(graph, routeQueue, optimizeAfterFound, car, rl, pathing, logger);
-            meetingEnds = newMeetingEnds ?? meetingEnds;
+            List<ValueTuple<Node, Node>> newMeetingEnds = Optimize(graph, routeQueue, optimizeAfterFound, car, rl, pathing, logger);
+            List<Route> routes = newMeetingEnds.Select(end => PathFound(graph, end.Item1, end.Item2, car)).ToList();
+            routes.Add(PathFound(graph, meetingEnds.Value.Item1, meetingEnds.Value.Item2, car));
 
-            return PathFound(graph, meetingEnds!.Value.Item1, meetingEnds.Value.Item2, car, logger);
+            return routes.MinBy(route =>
+            {
+                if (pathing is PathMeasure.Distance)
+                    return route.Distance;
+                return route.Time.Ticks;
+            })!;
         }
 
-        private ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, RegionLoader rl, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing, ILogger? logger = null)
+        private ValueTuple<Node, Node>? ExploreSide(bool fromStart, Graph graph, PriorityQueue<ulong, int> toVisit, PriorityHelper priorityHelper, Node goalNode, bool car, ValueTuple<float,float,float,float> ratingWeights, PathMeasure pathing, ILogger? logger = null)
         {
             ulong currentNodeId = toVisit.Dequeue();
             Node currentNode = graph.Nodes[currentNodeId];
             logger?.LogDebug($"Distance to goal {currentNode.DistanceTo(goalNode):00000.00}m");
             foreach ((ulong neighborId, KeyValuePair<ulong, bool> wayId) in currentNode.Neighbors)
             {
-                LoadNeighbor(graph, neighborId, wayId.Key, rl, logger);
+                LoadNeighbor(graph, neighborId, wayId.Key, rl!, logger);
                     
                 OSM_Graph.Way way = graph.Ways[wayId.Key];
                 byte speed = SpeedHelper.GetSpeed(way, car);
@@ -115,11 +121,11 @@ namespace astar
             return null;
         }
 
-        private ValueTuple<Node, Node>? Optimize(Graph graph, Queue<ulong> combinedQueue, int optimizeAfterFound, bool car, RegionLoader rl, PathMeasure pathing, ILogger? logger = null)
+        private List<ValueTuple<Node, Node>> Optimize(Graph graph, Queue<ulong> combinedQueue, int optimizeAfterFound, bool car, RegionLoader rl, PathMeasure pathing, ILogger? logger = null)
         {
             int currentPathLength = graph.Nodes.Values.Count(node => node.PreviousNodeId is not null);
             logger?.LogInformation($"Path found (explored {currentPathLength} Nodes). Optimizing route. (exploring {optimizeAfterFound} additional Nodes)");
-            ValueTuple<Node, Node>? newMeetingEnds = null;
+            List<ValueTuple<Node, Node>> newMeetingEnds = new();
             while (optimizeAfterFound-- > 0 && combinedQueue.Count > 0)
             {
                 ulong currentNodeId = combinedQueue.Dequeue();
@@ -141,7 +147,7 @@ namespace astar
                     if (neighborNode.PreviousIsFromStart is not null &&
                         neighborNode.PreviousIsFromStart != fromStart) //Check if we found the opposite End
                     {
-                        newMeetingEnds = fromStart ? new(currentNode, neighborNode) : new(neighborNode, currentNode);
+                        newMeetingEnds.Add(fromStart ? new(currentNode, neighborNode) : new(neighborNode, currentNode));
                     }
 
                     float metric = (currentNode.Metric ?? float.MaxValue) + (pathing is PathMeasure.Distance
